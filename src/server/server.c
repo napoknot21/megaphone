@@ -9,6 +9,8 @@
 #include <pthread.h>
 
 #include "server.h"
+#include "queue.h"
+
 
 void * handle_connection (void *p_client_socket) 
 {
@@ -26,4 +28,17 @@ int check (int exp, const char *msg) {
         exit(1);
     }
     return exp;
+}
+
+
+void * thread_func (void *arg) 
+{
+    while (true) {
+        int *pclient = dequeue();
+        if (pclient != NULL) {
+            // We have a connection
+            handle_connection(pclient);
+
+        }
+    }
 }
