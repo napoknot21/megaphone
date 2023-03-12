@@ -31,3 +31,15 @@ int *dequeue ()
     free(tmp);
     return result
 }
+
+
+void freeQueue ()
+{
+    node_t *tmp;
+
+    while (head != NULL) {
+        tmp = head;
+        head = head->next;
+        free(tmp)
+    }
+}
