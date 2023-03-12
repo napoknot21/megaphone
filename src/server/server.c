@@ -10,13 +10,6 @@
 
 #include "server.h"
 
-#define BUFF_SIZE 4096
-#define SOCKETERROR (-1)
-#define SERVER_BACKLOG 100
-
-typedef struct sockaddr_in SA_IN;
-typedef struct sockaddr SA;
-
 void * handle_connection (void *p_client_socket) 
 {
     int client_socket = *p_client_socket;
