@@ -13,7 +13,80 @@
 #include <signal.h>
 
 #include "server.h"
-#include "queue.h"
+
+int serv_socket;
+
+
+void handle_signal (int sig)
+{
+    printf("Caught signal %d", sig);
+    
+    //Closing sockets
+    if (close(serv_socket) == 0) {
+        puts("Socket closed !\n");
+        exit(0);
+    }
+
+    perror("An error occurred while closing the socket !\n");
+    printf("Error code: %d", errno);
+    exit(1);
+}
+
+
+void check_socket (int *serv_socket)
+{
+    int serv_socket = *serv_socket;
+    if (serv_socket < 0) {
+        perror("Socked failed !\n");
+        printf("Error code: %d\n", errno);
+        free(serv_socket);
+        exit(1);
+    }
+}
+
+
+void check_bind (int *serv_socket, struct sockaddr_in *serv_addr)
+{
+    if ((bind(*serv_socket, (struct sockaddr *) serv_addr, sizeof(*serv_addr))) < 0) {
+        perror("Bind Failed !\n");
+        printf("Error code: %d\n", errno);
+        close(*serv_socket);
+        free(serv_socket);
+        exit(1);
+    }
+}
+
+
+void check_listen (int *serv_socket, int nb_connections)
+{
+    if ((listen(*serv_socket, nb_connections)) < 0) {
+        perror("Listen Failed !\n");
+        printf("Error code: %d\n", errno);
+        close(*serv_socket);
+        free(serv_socket);
+        exit(1);
+    }
+}
+
+
+void check_accept (int *serv_socket, int *cli_socket, struct sockaddr *cli_addr)
+{
+    if ((*cli_socket = accept(*serv_socket, (struct sockaddr *) cli_addr, (socklen_t *) sizeof(cli_addr))) < 0) {
+        perror("Accept failed !\n");
+        printf("Error code: %d\n", errno);
+        close(*serv_socket);
+        free(serv_socket);
+        exit(1);
+    }
+}
+
+int main (int argc, char **argv) {
+
+
+    return 0;
+}
+
+//#include "queue.h"
 
 //pthread_mutex_t list_lock;
 
@@ -21,6 +94,7 @@
 //extern struct node *current;
 
 //Thread function
+/*
 void * handler_connection (void *p_client_socket) 
 {
     int threadnum = *(int *)p_client_socket;
@@ -61,3 +135,4 @@ void * thread_func (void *arg)
         }
     }
 }
+*/
