@@ -16,6 +16,34 @@
 
 int serv_socket;
 
+int load_server () {
+    
+    struct sockaddr_in6 serv_addr;
+
+    serv_socket = socket(PF_INET6, SOCK_STREAM, 0);
+    check_socket(&serv_socket);
+
+    memset(&serv_addr, 0x0, sizeof(serv_addr))
+    serv_addr.sin6_family = AF_INET6;
+    serv_addr.sin6_port = htons(SERVER_PORT);
+    serv_addr.sin6_addr = in6addr_any;
+
+    check_bind(&serv_socket, (struct sockaddr *) &serv_addr);
+
+    check_listen(&serv_socket, 0);
+
+    return 0;
+}
+
+
+
+
+
+
+
+
+
+
 
 void handle_signal (int sig)
 {
