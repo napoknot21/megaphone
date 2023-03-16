@@ -7,6 +7,7 @@
 #define SERVER_BACKLOG 100
 #define SERVER_PORT 7070 //tmp
 #define THREAD_POOL_SIZE 5
+#define IP_ADDR "127.0.0.1"
 
 typedef struct sockaddr_in SA_IN;
 typedef struct sockaddr SA;

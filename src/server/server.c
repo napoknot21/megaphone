@@ -5,18 +5,32 @@
 #include <perror.h>
 
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <semaphore.h>
 
 #include "server.h"
 #include "queue.h"
 
-
-void * handle_connection (void *p_client_socket) 
+//Thread function
+void * handler_connection (void *p_client_socket) 
 {
-    int client_socket = *p_client_socket;
-    free(p_client_socket);
-    char buff[BUFF_SIZE];
+    int threadnum = *(int *)p_client_socket;
+    int sock_desc;
+    struct sockaddr_in serv_addr;
+    char sendBuff[BUFF_SIZE+1], clientBuff[BUFF_SIZE+1];
+    
+    if ((sock_desc = recv(client_socket, clientBuff, 2*BUFF_SIZE+1, 0)) < 0) {
+        printf("Failed creating socket\n");
+    }
+    
+    bzero((char *) $serv_addr, sizeof(serv_addr));
+
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = inet_addr(IP_ADDR);
 
     return NULL;
 }
