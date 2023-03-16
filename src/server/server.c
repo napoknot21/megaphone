@@ -10,10 +10,15 @@
 #include <pthread.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <semaphore.h>
+#include <signal.h>
 
 #include "server.h"
 #include "queue.h"
+
+//pthread_mutex_t list_lock;
+
+//extern struct node *head;
+//extern struct node *current;
 
 //Thread function
 void * handler_connection (void *p_client_socket) 
