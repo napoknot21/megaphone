@@ -7,20 +7,21 @@
 #define SERVER_BACKLOG 100
 #define SERVER_PORT 7070 //tmp
 //#define THREAD_POOL_SIZE 5
-#define IP_ADDR "127.0.0.1"
+#define LOCAL_ADDR4 "127.0.0.1"
+#define LOCAL_ADDR6 "::1"
 
-typedef struct sockaddr_in SA_IN;
-typedef struct sockaddr SA;
+//typedef struct sockaddr_in SA_IN;
+//typedef struct sockaddr SA;
 
 //pthread_t thread_pool[THREAD_POOL_SIZE];
 //pthread_mutex_t mutex = PTHREAD_MUTEXT_INITIALIZER;
 //Let's thread wait until something happens and it can do something useful
 //pthread_cond_t condition_var = PTHREAD_COND_INITIALIZER;  
 
-
+int load_server (void);
 void handle_signal (int sig);
 void check_socket (int *serv_socket);
-void check_bind (int *serv_socket, SA_IN *serv_addr);
+void check_bind (int *serv_socket, (struct sockaddr_in) *serv_addr);
 void check_listen (int *serv_socket, int nb_connections);
 void check_accept (int *serv_socket, int *cli_socket, SA *cli_addr);
 
