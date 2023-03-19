@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <perror.h>
+#include <errno.h>
 
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -14,38 +14,132 @@
 
 #include "server.h"
 
-int serv_socket;
 
-int load_server () {
+int load_server (struct sockaddr_in serv_addr) 
+{
+    int serv_socket;
+
+    if ((serv_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        perror("[!] Failed to create socket...\n");
+        return STATUS_ERROR;
+    }
     
-    struct sockaddr_in6 serv_addr;
+    /*if (check_socket(&serv_socket) != 0) {
+        return STATUS_ERROR;
+    }
+    */
+    memset(&serv_addr, 0x00, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(SERVER_PORT);
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
 
-    serv_socket = socket(PF_INET6, SOCK_STREAM, 0);
-    check_socket(&serv_socket);
+    /*
+    if ((check_bind(&serv_socket, (struct sockaddr *) &serv_addr)) != 0) {
+        return STATUS_ERROR;
+    }
+    */
+    if ((bind(serv_socket, (struct sockaddr *) &serv_addr, sizeof(serv_addr))) < 0) {
+        perror("[!] Failed to bind socket to address...\n");
+        return STATUS_ERROR;
+    }
+    return serv_socket;
+}
 
-    memset(&serv_addr, 0x0, sizeof(serv_addr))
-    serv_addr.sin6_family = AF_INET6;
-    serv_addr.sin6_port = htons(SERVER_PORT);
-    serv_addr.sin6_addr = in6addr_any;
 
-    check_bind(&serv_socket, (struct sockaddr *) &serv_addr);
+void * handler_client (void * p_client_socket) 
+{
+    int cli_socket = *(int *) p_client_socket;
+    char buff[BUFF_SIZE];
 
-    check_listen(&serv_socket, 0);
+    memset(buff, 0x00, BUFF_SIZE);
+    
+    while (recv(cli_socket, buff, BUFF_SIZE, 0) > 0) {
+        
+        printf("Received Message: %s\n", buff);
+
+        //echo message to the client
+        send(cli_socket, buff, strlen(buff), 0);
+
+        memset(buff, 0x00, BUFF_SIZE);
+    }
+
+    /* //Alternative version
+    int fd, rd;
+    
+    rd = read (sock_cli, buff, BUFF_SIZE-1);
+    if (rd < 0) {
+        perror("Error reading from socket !\n");
+        exit(1);
+    }
+
+    printf("Here is the message: %s\n", buff);
+    
+    fd = write (sock_cli, "I got your message\n", 19);
+    if (fd < 0) {
+        perror("Error writing to socket !\n");
+        exit(1);
+    }
+    */
+    close(cli_socket);
+    pthread_exit(NULL);
+}
+
+
+int main (int argc, char **argv) 
+{
+    int serv_socket, cli_socket;
+    struct sockaddr_in serv_addr, cli_addr;
+    pthread_t threads[MAX_CLIENTS];
+    //int cli_socks[MAX_CLIENTS];
+
+    if ((serv_socket = load_server(serv_addr)) == STATUS_ERROR) {
+        perror("[!] Error loading the server...\n");
+        exit(1);
+    }
+
+    if (listen(serv_socket, MAX_CLIENTS) < 0) {
+        perror("[!] Failed to listen for incoming connections...\n");
+        exit(2);
+    }
+        
+    printf("[*] Server listening for incoming connections !\n");
+
+    while (1) {
+
+        socklen_t cli_len = sizeof(cli_addr);
+
+        if ((cli_socket = accept(serv_socket, (struct sockaddr *) &cli_addr, &cli_len)) < 0) {
+            perror("[!] Failed to accept client connections\n");
+            continue;
+        }
+
+        //spawn client thread
+        int thread_index;
+        for (thread_index = 0; thread_index < MAX_CLIENTS; thread_index++) {
+            if (threads[thread_index] == 0) {
+                if (pthread_create(&threads[thread_index], NULL, handler_client, &cli_socket) == 0) {
+                    printf("[*] Client connected, assigned thread => %d\n", thread_index);
+                } else {
+                    perror("[!] Failed to create thread...\n");
+                }
+            }
+            break;
+        }
+
+        if (thread_index == MAX_CLIENTS) {
+            printf("[!] Maximum number of clients reached...\n");
+            close (cli_socket);
+        }
+    }
+
+    close(serv_socket);
 
     return 0;
 }
 
 
-
-
-
-
-
-
-
-
-
-void handle_signal (int sig)
+/*
+int handler_signal (int sig)
 {
     printf("Caught signal %d", sig);
     
@@ -59,45 +153,47 @@ void handle_signal (int sig)
     printf("Error code: %d", errno);
     exit(1);
 }
+*/
 
-
-void check_socket (int *serv_socket)
+int check_socket (int *serv_socket)
 {
-    int serv_socket = *serv_socket;
-    if (serv_socket < 0) {
+    int serv_sock = *serv_socket;
+    if (serv_sock < 0) {
         perror("Socked failed !\n");
         printf("Error code: %d\n", errno);
         free(serv_socket);
-        exit(1);
+        return STATUS_ERROR;
     }
+    return STATUS_SUCCESS;
 }
 
 
-void check_bind (int *serv_socket, struct sockaddr_in *serv_addr)
+int check_bind (int *serv_socket, struct sockaddr_in *serv_addr)
 {
     if ((bind(*serv_socket, (struct sockaddr *) serv_addr, sizeof(*serv_addr))) < 0) {
         perror("Bind Failed !\n");
         printf("Error code: %d\n", errno);
         close(*serv_socket);
         free(serv_socket);
-        exit(1);
+        return STATUS_ERROR;
     }
+    return STATUS_SUCCESS;
 }
 
 
-void check_listen (int *serv_socket, int nb_connections)
+int check_listen (int *serv_socket, int nb_connections)
 {
     if ((listen(*serv_socket, nb_connections)) < 0) {
         perror("Listen Failed !\n");
         printf("Error code: %d\n", errno);
         close(*serv_socket);
         free(serv_socket);
-        exit(1);
+        return STATUS_ERROR;
     }
 }
 
 
-void check_accept (int *serv_socket, int *cli_socket, struct sockaddr *cli_addr)
+int check_accept (int *serv_socket, int *cli_socket, struct sockaddr *cli_addr)
 {
     if ((*cli_socket = accept(*serv_socket, (struct sockaddr *) cli_addr, (socklen_t *) sizeof(cli_addr))) < 0) {
         perror("Accept failed !\n");
@@ -108,14 +204,6 @@ void check_accept (int *serv_socket, int *cli_socket, struct sockaddr *cli_addr)
     }
 }
 
-int main (int argc, char **argv) {
-
-
-    return 0;
-}
-
-//#include "queue.h"
-
 //pthread_mutex_t list_lock;
 
 //extern struct node *head;
@@ -123,7 +211,7 @@ int main (int argc, char **argv) {
 
 //Thread function
 /*
-void * handler_connection (void *p_client_socket) 
+int * handler_connection (void *p_client_socket) 
 {
     int threadnum = *(int *)p_client_socket;
     int sock_desc;
@@ -152,7 +240,7 @@ int check (int exp, const char *msg) {
 }
 
 
-void * thread_func (void *arg) 
+int * thread_func (void *arg) 
 {
     while (true) {
         int *pclient = dequeue();

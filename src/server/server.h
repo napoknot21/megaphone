@@ -15,14 +15,17 @@
 //pthread_mutex_t mutex = PTHREAD_MUTEXT_INITIALIZER;
 //pthread_cond_t condition_var = PTHREAD_COND_INITIALIZER;  
 
-int load_server (void);
-void * handle_client (void *p_client_socket);
-void handle_signal (int sig);
+typedef struct sockaddr_in SA_IN;
+typedef struct sockaddr SA;
+
+int load_server (SA_IN serv_addr);
+void * handler_client (void *p_client_socket);
+int handler_signal (int sig);
 
 // Check functions
-void check_socket (int *serv_socket);
-void check_bind (int *serv_socket, (struct sockaddr_in) *serv_addr);
-void check_listen (int *serv_socket, int nb_connections);
-void check_accept (int *serv_socket, int *cli_socket, SA *cli_addr);
+int check_socket (int *serv_socket);
+int check_bind (int *serv_socket, SA_IN *serv_addr);
+int check_listen (int *serv_socket, int nb_connections);
+int check_accept (int *serv_socket, int *cli_socket, SA *cli_addr);
 
 #endif
