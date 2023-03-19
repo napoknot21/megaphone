@@ -1,9 +1,6 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-#define STATUS_ERROR (-1)
-#define STATUS_SUCCESS 0
-
 #define BUFF_SIZE 4096
 #define MAX_CLIENTS  10
 
@@ -11,17 +8,11 @@
 #define LOCAL_ADDR4 "127.0.0.1"
 #define LOCAL_ADDR6 "::1"
 
-//pthread_t thread_pool[THREAD_POOL_SIZE];
-//pthread_mutex_t mutex = PTHREAD_MUTEXT_INITIALIZER;
-//pthread_cond_t condition_var = PTHREAD_COND_INITIALIZER;  
-
 typedef struct sockaddr_in SA_IN;
-//typedef struct sockaddr SA;
 
 void run_server (void);
 void * handler_client (void *p_client_socket);
 void remove_client (int cli_sock);
-//int handler_signal (int sig);
 
 //main functions
 int create_socket (void);

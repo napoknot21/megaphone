@@ -164,7 +164,7 @@ void listen_socket (int serv_socket)
     }
 }
 
-
+/*
 int accept_connection (int sock_fd, struct sockaddr_in *cli_addr)
 {
     int cli_sock;
@@ -177,7 +177,7 @@ int accept_connection (int sock_fd, struct sockaddr_in *cli_addr)
 
     return cli_sock;
 }
-
+*/
 
 void close_socket (int sock_fd)
 {
