@@ -7,7 +7,7 @@
 #define BUFF_SIZE 4096
 #define MAX_CLIENTS  10
 
-#define SERVER_PORT 7070 //tmp
+#define SERVER_PORT 9000 //tmp
 #define LOCAL_ADDR4 "127.0.0.1"
 #define LOCAL_ADDR6 "::1"
 
