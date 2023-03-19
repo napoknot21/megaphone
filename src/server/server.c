@@ -3,21 +3,23 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <pthread.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <pthread.h>
 
 #include "server.h"
 
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_t threads[MAX_CLIENTS];
+int client_count = 0;
 
 void run_server () 
 {
-    int serv_socket, cli_socket;
-    pthread_t threads[MAX_CLIENTS];
-    int client_count = 0;
+    int serv_socket, cli_socket;    
+    pthread_t thread_id;
+    socklen_t addrlen;
 
     serv_socket = create_socket();
     bind_socket(serv_socket);
@@ -28,26 +30,62 @@ void run_server ()
     while (1) {
 
         struct sockaddr_in cli_addr;
-        socklen_t addrlen = sizeof(cli_addr);
+        addrlen = sizeof(cli_addr);
 
-        cli_socket = accept_connection (serv_socket, &cli_addr);
+        //cli_socket = accept_connection (serv_socket, &cli_addr);
+        if ((cli_socket = accept(serv_socket, (struct sockaddr *)&cli_addr, &addrlen)) == -1) {
+            perror("[!] Accept failed...\n");
+            continue;
+        }
 
         printf("[*] New connection from %s:%d\n", inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port));
+
+        pthread_mutex_lock(&lock);
 
         if (client_count >= MAX_CLIENTS) {
             printf("[!] Maximum number of clients reached, closing connections...\n");
             close_socket(cli_socket);
-            continue;
+        } else {
+            threads[client_count++] = cli_socket;
+            if ((pthread_create(&thread_id, NULL, handler_client, (void *) &cli_socket)) != 0) {
+                perror("[!] pthread_create failed...\n");
+                exit(EXIT_FAILURE);
+            }
+
         }
 
-        if ((pthread_create(&threads[client_count], NULL, handler_client, (void *) &cli_socket)) != 0) {
-            perror("[!] pthread_create failed...\n");
-            exit(EXIT_FAILURE);
-        }
+        pthread_mutex_unlock(&lock);
 
-        client_count++;
+    }
+}
+
+
+void remove_client(int cli_sock) 
+{
+    pthread_mutex_lock(&lock);
+
+    int i;
+    for (i = 0; i < client_count; i++) {
+        if (threads[i] == cli_sock) {
+            break;
+        }
     }
 
+    if (i == client_count) {
+        fprintf(stderr, "[!] Client socket %d not found...\n", cli_sock);
+        pthread_mutex_unlock(&lock);
+        return;
+    }
+
+    client_count--;
+    
+    while (i < client_count) {
+        threads[i] = threads[i + 1];
+        i++;
+    }
+    
+    pthread_mutex_unlock(&lock);
+    close_socket(cli_sock);
 }
 
 
@@ -67,16 +105,18 @@ void * handler_client (void * p_client_socket)
         pthread_mutex_lock(&lock);
 
         //echo message to the client
-        if (send(cli_socket, buff, strlen(buff), 0) == -1) {
-            perror("[!] Send message failed...\n");
-            close_socket(cli_socket);
-            free(p_client_socket);
-            pthread_mutex_unlock(&lock);
-            return NULL;
+        for (int i = 0; i < client_count; i++) {
+            
+            if (threads[i] != cli_socket) {
+
+                if (send(threads[i], buff, strlen(buff), 0)  == -1) {
+                    perror("[!] Send message failed...\n");
+                    remove_client(i);
+                }
+            }
         }
 
-        memset(buff, 0x00, BUFF_SIZE);
-        pthread_mutex_unlock(&lock);
+        pthread_mutex_unlock(&lock);    
     }
 
     if (bytes_recv == 0) {
@@ -85,8 +125,7 @@ void * handler_client (void * p_client_socket)
         perror("[!] Recive failed\n");
     }
 
-    close_socket (cli_socket);
-    free(p_client_socket);
+    remove_client(cli_socket);
     pthread_exit(NULL);
 }
 
@@ -152,5 +191,6 @@ void close_socket (int sock_fd)
 int main (int argc, char **argv) 
 {
     run_server();
+    //pthread_mutex_destroy(&lock);
     return 0;
 }

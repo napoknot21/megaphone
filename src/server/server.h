@@ -16,10 +16,11 @@
 //pthread_cond_t condition_var = PTHREAD_COND_INITIALIZER;  
 
 typedef struct sockaddr_in SA_IN;
-typedef struct sockaddr SA;
+//typedef struct sockaddr SA;
 
 void run_server (void);
 void * handler_client (void *p_client_socket);
+void remove_client (int cli_sock);
 //int handler_signal (int sig);
 
 //main functions
