@@ -7,13 +7,16 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include "../forge.h"
+#include "../protocol.h"
+#include "../ui.h"
 
 /* Un message est définit sur 8 octets. */
 #define SIZE_MESS 8
 
 /* Le port et l'adresse pour les tests sur le serveur de lulu. */
-#define PORT 7070
-#define ADRESSE "lulu.informatique.univ-paris-diderot.fr"
+#define PORT "7777"
+#define ADRESSE "lucy.informatique.univ-paris-diderot.fr"
 
 /* A séparer en plusieurs fonction TODO */
 
@@ -73,17 +76,18 @@ int get_server_addr(char* hostname, char* port, int * sock, struct sockaddr_in6*
  */
 int communication(int fdsock) {
     /* ICI Le buffer devra contenir le contenu du message. TODO */
-    char buf[SIZE_MESS];
-    memset(buf, 0, SIZE_MESS);
-    sprintf(buf, "Test\n");
-
+    const char* buf;
+    const char* data = "Test";
+    // sprintf(data, "%s", "Test");
+    buf = make_buf(SIGNUP, 0, 0, 0, data, 4);
+    // buf = make_insc_buf(SIGNUP, 1, "Pseudo1", 7);
     int ecrit = 1;
 
     while(ecrit > 0) {
 
         /* Envoie le message mis dans buf au serveur. */
         /* Il faudra ici demander quelle action l'utilisateur souhaite faire et quel message il souhaite envoyé au serveur. */
-        int ecrit = send(fdsock, buf, strlen(buf), 0);
+        int ecrit = send(fdsock, (char*) buf, sizeof(buf), 0);
         if(ecrit <= 0){
             perror("erreur ecriture");
             exit(3);
@@ -92,7 +96,7 @@ int communication(int fdsock) {
         //memset(buf, 0, SIZE_MESS);
 
         /* Reception du message renvoyer par le serveur. */
-        int recu = recv(fdsock, buf, SIZE_MESS, 0);
+        int recu = recv(fdsock, (char*) buf, SIZE_MESS, 0);
         if (recu <= 0){
             perror("erreur lecture");
             exit(4);
@@ -108,15 +112,16 @@ int communication(int fdsock) {
 
 int main(int argc, char** args) {
     
-    if (argc < 3) {
+    /*if (argc < 3) {
         fprintf(stderr, "Usage: %s <hostname> <port>\n", args[0]);
         exit(1);
-    }
+    }*/
 
     struct sockaddr_in6* server_addr;
     int fdsock, adrlen;
     
-    switch (get_server_addr(args[1], args[2], &fdsock, &server_addr, &adrlen)) {
+    // switch (get_server_addr(args[1], args[2], &fdsock, &server_addr, &adrlen)) {
+    switch (get_server_addr(ADRESSE, PORT, &fdsock, &server_addr, &adrlen)) {
         case 0: printf("adresse creee !\n"); break;
         case -1:
             fprintf(stderr, "Erreur: hote non trouve.\n"); 
@@ -133,26 +138,31 @@ int main(int argc, char** args) {
     /* Execution de l'action par le serveur */
     /* Reception du message envoyé par le serveur par le client (ex: s'il est abonné à un fil) */
 
-    /*switch (action) {
-        case 0 :
-
-            break;
-        case 1 : 
-
-            break;
-        case 2:
-
-            break;
-        case 3:
-
-            break;
-        case 4:
-
-            break;
-        // etc...
-        default:
-            break;
-    }*/    
+    request_code_t action;
+    while((action = get_req()) >= 0 && action <= 5) {
+        switch (action) {
+            case SIGNUP :
+                /* Demande des informations pour remplir le buffer à l'utilisateur (depuis ui) */
+                /* Remplissage du buffer (message) */
+                /* Envoie au serveur */
+                break;
+            case POST :
+                /* Idem */
+            case FETCH :
+                /* Idem */
+            case SUBSCRIBE :
+                /* Idem */
+            case UPLOAD :
+                /* Idem */
+            case DOWNLOAD :
+                /* Idem */
+                // get_all();
+                // make_buf();
+                break;
+            default:
+                break;
+        }
+    }  
 
     communication(fdsock);
 
