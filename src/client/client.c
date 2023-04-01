@@ -12,6 +12,11 @@
 #include "../ui.h"
 #include "client.h"
 
+/*
+ * This method manages to allocate the
+ * tcp socket in the client structure.
+ */
+
 int set_tcp_socket(struct client * cl, int domain, const char * distant, uint16_t port)
 {
 	cl->tcp_sock = socket(domain, SOCK_STREAM, 0);
@@ -51,6 +56,12 @@ int set_tcp_socket(struct client * cl, int domain, const char * distant, uint16_
 
 	return status;
 }
+
+/*
+ * This method manages to send a packet
+ * structure through TCP/IP layer. It gives
+ * back the raw received data.
+ */
 
 int client_send_dataflow(const struct client * cl, const struct packet * p, char * rcv)
 {
@@ -132,14 +143,20 @@ int get_server_addr(char* hostname, char* port, int * sock, struct sockaddr_in6*
     return 0;
 }
 
+/*
+ * This method parses the line and
+ * returns a table of strings, corresponding
+ * to the command followed by its arguments.
+ */
+
 char ** parse_line(const char * line, size_t llen, size_t * argc)
 {
-	*argc = 0;
+	*argc = 0;	
 
 	for(size_t k = 0; k < llen; k++)
 	{
 		if(line[k] == 0x20 || line[k] == '\n') (*argc)++;
-	}
+	}	
 
 	char ** argv = malloc(*argc * sizeof(char*));
 	size_t beg = 0;	
@@ -155,10 +172,26 @@ char ** parse_line(const char * line, size_t llen, size_t * argc)
 	
 			i++;	
 		}
-	}
+	}	
 
 	return argv;
 }
+
+/*
+ * This method closes both of the
+ * client sockets (TCP & UDP)
+ */
+
+void close_client(struct client * cl)
+{
+	close(cl->tcp_sock);
+	close(cl->udp_sock);
+}
+
+/*
+ * This method manages the interaction
+ * between the user and the client.
+ */
 
 void mp_shell()
 {
@@ -187,7 +220,7 @@ void mp_shell()
 
 		printf("megaphone $ ");
 		getline(&data, &llin, stdin);
-		char ** argv = parse_line(data, llin, &argc);	
+		char ** argv = parse_line(data, strlen(data), &argc);	
 
 		if(argc <= 1) continue;
 
@@ -208,10 +241,12 @@ void mp_shell()
 			free(argv[k]);
 		}
 
-		free(argv);
+		free(argv);	
 		free(data);
-	
+
 	} while(strcmp(data, "quit\n"));
+
+	close_client(&cl);
 }
 
 int main(int argc, char ** argv) 

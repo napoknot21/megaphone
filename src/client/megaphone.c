@@ -4,6 +4,12 @@
 #include <stdio.h>
 #include <string.h>
 
+/*
+ * This method builds the packet for
+ * the corresponding request code
+ * SIGNUP.
+ */
+
 struct packet * mp_signup(const char * username) 
 {
 	struct packet * p = malloc(sizeof(struct packet));
@@ -16,35 +22,76 @@ struct packet * mp_signup(const char * username)
 	return p;
 }
 
-struct packet * mp_upload_post(const struct session * se, const post_t post) {}
+/*
+ * This method builds the packet for
+ * the corresponding request code POST.
+ */
 
-struct packet * mp_request_threads(const struct session * se, unsigned thread, unsigned n) {}
+struct packet * mp_upload_post(const struct session * se, const struct post * p) {}
 
-struct packet * mp_subscribe(const struct session * se, unsigned thread) {}
+/*
+ * This method builds the packet for
+ * the corresponding request code FETCH.
+ */
+
+struct packet * mp_request_threads(const struct session * se, uint16_t thread, uint16_t n) {}
+
+/*
+ * This methode builds packet for
+ * the corresponding request code
+ * SUBSCRIBE.
+ */
+
+struct packet * mp_subscribe(const struct session * se, uint16_t thread) {}
+
+/*
+ * This method refers the correct packet
+ * builder, depending on the request
+ * code. It returns a packet structure.
+ */
 
 struct packet * mp_request_for(const struct session * se, const request_code_t rc, size_t argc, char ** argv) 
 {
 	struct packet * p = NULL;
+	uint16_t thread, n;
 
 	switch(rc)
 	{
 	case SIGNUP:
-		if(!argc)
-		{
-			printf("Usage: signup <username>");
-			return NULL;
-		}
-
 		printf("[!] Signing-up with username %s\n", argv[0]);
 		p = mp_signup(argv[0]);	
 		break;
 	
 	case POST:
+		if(argc <= 1)
+		{
+			printf("[!] Usage : post <thread> <message>");
+		}
+
+		memmove(&thread, argv[0], 2);
+		struct post message_post = {MESSAGE, thread, argv[1]};
+
+		p = mp_upload_post(se, &message_post);
 		break;
+	
 	case FETCH:
+		if(argc <= 1)
+		{
+			printf("[!] Usage : fetch <thread> <size>");
+			return NULL;
+		}
+
+		memmove(&thread, &argv[0], 2);
+		memmove(&n, argv[1], 2);
+
+		p = mp_request_threads(se, thread, n);
 		break;
-	case SUBSCRIBE:
+
+	case SUBSCRIBE:	
+		memmove(&thread, &argv[0], 2);
+		p = mp_subscribe(se, thread);
 		break;
+	
 	case DOWNLOAD:
 		break;
 
@@ -55,7 +102,31 @@ struct packet * mp_request_for(const struct session * se, const request_code_t r
 	return p;
 }
 
-int mp_recv(struct session * se, const request_code_t rc, const char * argv)
+/*
+ * This function manages the receive data
+ * from the server, depending on the request
+ * code.
+ */
+
+int mp_recv(struct session * se, const request_code_t rc, const char * data)
 {
+	switch(rc)
+	{
+	case SIGNUP:
+		memmove(&se->uid, data, sizeof(uuid_t));
+		printf("[+] You successfully signed-up to the network!\n");
+		break;
+	case POST:
+		break;
+	case FETCH:
+		break;
+	case SUBSCRIBE:
+		break;
+	case DOWNLOAD:
+		break;
+	case UNKNOWN:
+		break;
+	}
+
 	return 0;
 }

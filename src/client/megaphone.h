@@ -18,9 +18,9 @@ struct session {
  */
 
 struct packet * mp_signup(const char*);
-struct packet * mp_upload_post(const struct session*, const post_t);
-struct packet * mp_request_threads(const struct session*, unsigned, unsigned);
-struct packet * mp_subscribe(const struct session*, unsigned);
+struct packet * mp_upload_post(const struct session*, const struct post*);
+struct packet * mp_request_threads(const struct session*, uint16_t, uint16_t);
+struct packet * mp_subscribe(const struct session*, uint16_t);
 
 struct packet * mp_request_for(const struct session*, const request_code_t, size_t argc, char ** argv);
 int mp_recv(struct session*, const request_code_t, const char*);

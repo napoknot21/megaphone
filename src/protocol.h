@@ -40,11 +40,12 @@ enum post_type
 	MFILE
 };
 
-typedef struct post
+struct post
 {
 	uint16_t type;
-	unsigned thread;
-	const char * data;
-} post_t;
+	uint16_t thread;
+
+	char * data;
+};
 
 #endif
