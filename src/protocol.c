@@ -4,25 +4,18 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-const struct header make_header(request_code_t code, uuid_t id, uint16_t * fields, size_t size) {
-    const struct header header = {.code = code, .id = id, .fields = fields, .size = size};
-    return header;
-}
+request_code_t string_to_code(const char * str)
+{
+	if(!strcmp(str, "signup")) 
+		return SIGNUP;
+	else if(!strcmp(str, "post")) 
+		return POST;
+	else if(!strcmp(str, "fetch"))
+		return FETCH;
+	else if(!strcmp(str, "subscribe"))
+		return SUBSCRIBE;
+	else if(!strcmp(str, "download"))
+		return DOWNLOAD;	
 
-const struct packet make_packet(struct header header, const char * data, size_t size) {
-    const struct packet packet = {.header = header, .data = data, .size = size};
-    return packet;
-}
-
-const char* make_buf(request_code_t code, uuid_t id, uint16_t * fields, size_t size_h, const char * data, size_t size_p) {
-    const struct header header = make_header(code, id, fields, size_h);
-    const struct packet packet = make_packet(header, data, size_p);
-    const char* buf = forge_tcp_packet(&packet);
-    return buf;
-}
-
-const char* make_insc_buf(request_code_t code, uuid_t id, uint16_t * fields, size_t size_h) {
-    const struct header header = make_header(code, id, fields, size_h);
-    const char* buf = bufferize_header(&header);
-    return buf;
+	return UNKNOWN;
 }

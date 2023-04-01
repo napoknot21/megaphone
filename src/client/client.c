@@ -10,13 +10,76 @@
 #include "../forge.h"
 #include "../protocol.h"
 #include "../ui.h"
+#include "client.h"
 
-/* Un message est définit sur 8 octets. */
-#define SIZE_MESS 8
+int set_tcp_socket(struct client * cl, int domain, const char * distant, uint16_t port)
+{
+	cl->tcp_sock = socket(domain, SOCK_STREAM, 0);
 
-/* Le port et l'adresse pour les tests sur le serveur de lulu. */
-#define PORT "7777"
-#define ADRESSE "lucy.informatique.univ-paris-diderot.fr"
+	struct sockaddr sa;
+	sa.sa_family = domain;
+
+	in_port_t nport = htons(port);
+	socklen_t sockaddr_size = 0;	
+
+	switch(domain)
+	{
+	case AF_INET:		
+		inet_pton(AF_INET, distant, sa.sa_data + 2);
+		sockaddr_size = sizeof(struct sockaddr_in);
+		break;
+
+	case AF_INET6:			
+		memset(sa.sa_data, 0x0, sizeof(sa.sa_data));
+		inet_pton(AF_INET6, distant, sa.sa_data + 6);
+		sockaddr_size = sizeof(struct sockaddr_in6);	
+		break;
+	}
+
+	memmove(sa.sa_data, &nport, 2);
+
+	int status = connect(cl->tcp_sock, &sa, sockaddr_size);
+
+	if(!status)
+	{
+		printf("[+] Connecting by TCP/IP over %s:%d\n", distant, port);
+	}
+	else
+	{
+		printf("[-] An error occured while connecting by TCP/IP!\n");
+	}
+
+	return status;
+}
+
+int client_send_dataflow(const struct client * cl, const struct packet * p, char * rcv)
+{
+	const char * data = forge_tcp_packet(p);
+	int status = send(cl->tcp_sock, data, strlen(data), 0);
+
+	if(status)
+	{
+		printf("[-] An error occured while sending packet!\n");
+		return status;
+	}
+
+	ssize_t bytes, size = 0;
+	ssize_t reserve = TCP_RECV_BLOCK;
+
+	do {
+		if(size >= reserve)
+		{
+			reserve += TCP_RECV_BLOCK;
+			rcv = realloc(rcv, reserve);
+		}
+
+		bytes = recv(cl->tcp_sock, rcv, TCP_RECV_BLOCK, 0);
+		size += bytes;
+
+	} while(bytes);
+
+	return status;	
+}
 
 /* A séparer en plusieurs fonction TODO */
 
@@ -69,104 +132,90 @@ int get_server_addr(char* hostname, char* port, int * sock, struct sockaddr_in6*
     return 0;
 }
 
-/**
- * @brief permet de communiquer avec le serveur via la socket fdsock
- * @param fdsock est la socket associé au client.
- * @return 0 si tout c'est bien passé et une erreur si un message ne s'est pas envoyé ou n'a pas été reçu.
- */
-int communication(int fdsock) {
-    /* ICI Le buffer devra contenir le contenu du message. TODO */
-    const char* buf;
-    const char* data = "Test";
-    // sprintf(data, "%s", "Test");
-    buf = make_buf(SIGNUP, 0, 0, 0, data, 4);
-    // buf = make_insc_buf(SIGNUP, 1, "Pseudo1", 7);
-    int ecrit = 1;
+char ** parse_line(const char * line, size_t llen, size_t * argc)
+{
+	*argc = 0;
 
-    while(ecrit > 0) {
+	for(size_t k = 0; k < llen; k++)
+	{
+		if(line[k] == 0x20 || line[k] == '\n') (*argc)++;
+	}
 
-        /* Envoie le message mis dans buf au serveur. */
-        /* Il faudra ici demander quelle action l'utilisateur souhaite faire et quel message il souhaite envoyé au serveur. */
-        int ecrit = send(fdsock, (char*) buf, sizeof(buf), 0);
-        if(ecrit <= 0){
-            perror("erreur ecriture");
-            exit(3);
-        }
-        printf("Envoyer : %s\n", buf);
-        //memset(buf, 0, SIZE_MESS);
+	char ** argv = malloc(*argc * sizeof(char*));
+	size_t beg = 0;	
 
-        /* Reception du message renvoyer par le serveur. */
-        int recu = recv(fdsock, (char*) buf, SIZE_MESS, 0);
-        if (recu <= 0){
-            perror("erreur lecture");
-            exit(4);
-        }
-        /* Traitement du message par une autre fonction. */
-        printf("Reçu : %s\n", buf);
+	for(size_t i = 0, end = 0; end < llen; end++)
+	{
+		if(line[end] == 0x20 || line[end] == '\n')
+		{	
+			argv[i] = malloc(end - beg + 1);
+			argv[i][end - beg] = 0;
+			memmove(argv[i], line + beg, end - beg);
+			beg = end + 1;
+	
+			i++;	
+		}
+	}
 
-        /* Les messages de taille supérieur à 8 octets ne sont pas affichés. */
-    }
-    
-    return 0;
+	return argv;
 }
 
-int main(int argc, char** args) {
-    
-    /*if (argc < 3) {
-        fprintf(stderr, "Usage: %s <hostname> <port>\n", args[0]);
-        exit(1);
-    }*/
+void mp_shell()
+{
+	struct client cl;
+	memset(&cl, 0x0, sizeof(cl));
 
-    struct sockaddr_in6* server_addr;
-    int fdsock, adrlen;
-    
-    // switch (get_server_addr(args[1], args[2], &fdsock, &server_addr, &adrlen)) {
-    switch (get_server_addr(ADRESSE, PORT, &fdsock, &server_addr, &adrlen)) {
-        case 0: printf("adresse creee !\n"); break;
-        case -1:
-            fprintf(stderr, "Erreur: hote non trouve.\n"); 
-        case -2:
-            fprintf(stderr, "Erreur: echec de creation de la socket.\n");
-            exit(1);
-    }
+	/*
+	 * There we add TCP/IP socket
+	 */
 
-    /* Demande de l'action */
-    /* Reception de l'action */
-    /* Construction de la structure général du message à envoyer au serveur */
-    /* Demande du contenu de chaque composante du message */
-    /* Envoie du message au serveur */
-    /* Execution de l'action par le serveur */
-    /* Reception du message envoyé par le serveur par le client (ex: s'il est abonné à un fil) */
+	/*
+	if(set_tcp_socket(&cl, AF_INET, DEFAULT_BOOTSTRAP, DEFAULT_PORT))
+	{
+		printf("[-] Error while initializing client!\n");
+		return;
+	}
+	*/
 
-    request_code_t action;
-    while((action = get_req()) >= 0 && action <= 5) {
-        switch (action) {
-            case SIGNUP :
-                /* Demande des informations pour remplir le buffer à l'utilisateur (depuis ui) */
-                /* Remplissage du buffer (message) */
-                /* Envoie au serveur */
-                break;
-            case POST :
-                /* Idem */
-            case FETCH :
-                /* Idem */
-            case SUBSCRIBE :
-                /* Idem */
-            case UPLOAD :
-                /* Idem */
-            case DOWNLOAD :
-                /* Idem */
-                // get_all();
-                // make_buf();
-                break;
-            default:
-                break;
-        }
-    }  
+	struct session se; 
+	memset(&se, 0x0, sizeof(se));
 
-    communication(fdsock);
+	char * data = NULL;
+	size_t argc, llin = 0;
 
-    close(fdsock);
-    
-    return 0;
+	do {
+
+		printf("megaphone $ ");
+		getline(&data, &llin, stdin);
+		char ** argv = parse_line(data, llin, &argc);	
+
+		if(argc <= 1) continue;
+
+		request_code_t rc = string_to_code(argv[0]);
+		printf("[!] Request Code: %d\n", rc);
+		struct packet * p = mp_request_for(&se, rc, argc - 1, argv + 1);
+
+		char * rcv = malloc(TCP_RECV_BLOCK);
+		client_send_dataflow(&cl, p, rcv);
+
+		mp_recv(&se, rc, rcv);
+
+		free(p);
+		free(rcv);
+
+		for(size_t k = 0; k < argc; k++)
+		{
+			free(argv[k]);
+		}
+
+		free(argv);
+		free(data);
+	
+	} while(strcmp(data, "quit\n"));
+}
+
+int main(int argc, char ** argv) 
+{
+       mp_shell();
+       return 0;
 }
