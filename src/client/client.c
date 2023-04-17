@@ -23,6 +23,7 @@ int set_tcp_socket(struct client * cl, int domain, const char * distant, uint16_
 
 	struct sockaddr sa;
 	sa.sa_family = domain;
+	memset(&sa, 0x0, sizeof(sa));
 
 	in_port_t nport = htons(port);
 	socklen_t sockaddr_size = 0;	
@@ -202,13 +203,13 @@ void mp_shell()
 	 * There we add TCP/IP socket
 	 */
 
-	/*
+	
 	if(set_tcp_socket(&cl, AF_INET, DEFAULT_BOOTSTRAP, DEFAULT_PORT))
 	{
 		printf("[-] Error while initializing client!\n");
 		return;
 	}
-	*/
+	
 
 	struct session se; 
 	memset(&se, 0x0, sizeof(se));

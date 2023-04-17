@@ -3,8 +3,8 @@
 
 #include "../protocol.h"
 
-#define DEFAULT_PORT 6442
-#define DEFAULT_BOOTSTRAP "8.8.8.8"
+#define DEFAULT_PORT 4242
+#define DEFAULT_BOOTSTRAP "::1"
 
 struct session {
 

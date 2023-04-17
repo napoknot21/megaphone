@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <arpa/inet.h>
 
 /*
  * This method builds the packet for
@@ -18,7 +19,8 @@ struct packet * mp_signup(const char * username)
 	memset(&p->header, 0x0, sizeof(p->header));
 
 	p->header.code = SIGNUP;
-
+	p->data = username;
+	p->size = strlen(username);
 	return p;
 }
 
@@ -27,14 +29,48 @@ struct packet * mp_signup(const char * username)
  * the corresponding request code POST.
  */
 
-struct packet * mp_upload_post(const struct session * se, const struct post * p) {}
+struct packet * mp_upload_post(const struct session * se, const struct post * p) {
+	struct packet * pa = malloc(sizeof(struct packet));
+
+	memset(pa, 0x0, sizeof(struct packet));
+	memset(&pa->header, 0x0, sizeof(pa->header));
+	memset(&pa->data, 0x0, sizeof(pa->data));
+
+	pa->data = p->data;
+	pa->size = strlen(p->data);
+	pa->header.code = POST;
+	pa->header.id = htonl(se->uid);
+	pa->header.fields = malloc(sizeof(3*sizeof(uint16_t)));
+	pa->header.fields[0] = htonl(p->thread);
+	pa->header.fields[1] = htonl(0);
+	pa->header.fields[2] = strlen(p->data);
+
+	return pa;
+}
 
 /*
  * This method builds the packet for
  * the corresponding request code FETCH.
  */
 
-struct packet * mp_request_threads(const struct session * se, uint16_t thread, uint16_t n) {}
+struct packet * mp_request_threads(const struct session * se, uint16_t thread, uint16_t n) {
+	struct packet * pa = malloc(sizeof(struct packet));
+
+	pa->header.fields = malloc(sizeof(3*sizeof(uint16_t)));
+
+	memset(pa, 0x0, sizeof(struct packet));
+	memset(&pa->header, 0x0, sizeof(pa->header));
+	memset(&pa->data, 0x0, sizeof(pa->data));
+	memset(&pa->header.fields, 0x0, sizeof(pa->header.fields));
+
+	pa->size = htonl(0);
+	pa->header.code = FETCH;
+	pa->header.id = htonl(se->uid);
+	pa->header.fields[0] = htonl(thread);
+	pa->header.fields[1] = htonl(n);
+	
+	return pa;
+}
 
 /*
  * This methode builds packet for
@@ -42,7 +78,24 @@ struct packet * mp_request_threads(const struct session * se, uint16_t thread, u
  * SUBSCRIBE.
  */
 
-struct packet * mp_subscribe(const struct session * se, uint16_t thread) {}
+struct packet * mp_subscribe(const struct session * se, uint16_t thread) {
+	struct packet * pa = malloc(sizeof(struct packet));
+
+	pa->header.fields = malloc(sizeof(3*sizeof(uint16_t)));
+
+	memset(pa, 0x0, sizeof(struct packet));
+	memset(&pa->header, 0x0, sizeof(pa->header));
+	memset(&pa->data, 0x0, sizeof(pa->data));
+	memset(&pa->header.fields, 0x0, sizeof(pa->header.fields));
+
+	pa->size = 0;
+	pa->header.code = SUBSCRIBE;
+	pa->header.id = htonl(se->uid);
+	pa->header.fields[0] = htonl(thread);
+	pa->header.fields[1] = htonl(0);
+	
+	return pa;
+}
 
 /*
  * This method refers the correct packet
@@ -59,7 +112,8 @@ struct packet * mp_request_for(const struct session * se, const request_code_t r
 	{
 	case SIGNUP:
 		printf("[!] Signing-up with username %s\n", argv[0]);
-		p = mp_signup(argv[0]);	
+		p = mp_signup(argv[0]);
+		// printf("%s", p->data);
 		break;
 	
 	case POST:
