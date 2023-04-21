@@ -22,8 +22,8 @@ int set_tcp_socket(struct client * cl, int domain, const char * distant, uint16_
 	cl->tcp_sock = socket(domain, SOCK_STREAM, 0);
 
 	struct sockaddr sa;
-	sa.sa_family = domain;
 	memset(&sa, 0x0, sizeof(sa));
+	sa.sa_family = domain;
 
 	in_port_t nport = htons(port);
 	socklen_t sockaddr_size = 0;	
@@ -67,7 +67,7 @@ int set_tcp_socket(struct client * cl, int domain, const char * distant, uint16_
 int client_send_dataflow(const struct client * cl, const struct packet * p, char * rcv)
 {
 	const char * data = forge_tcp_packet(p);
-	int status = send(cl->tcp_sock, data, strlen(data), 0);
+	int status = send(cl->tcp_sock, data, strlen(data), 0);	
 
 	if(status)
 	{

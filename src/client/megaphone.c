@@ -21,6 +21,8 @@ struct packet * mp_signup(const char * username)
 	p->header.code = SIGNUP;
 	p->data = username;
 	p->size = strlen(username);
+
+	printf("[i] username: %s\n", username);
 	return p;
 }
 

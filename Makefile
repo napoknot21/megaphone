@@ -1,8 +1,7 @@
 CFLAGS = -Wall -pthread
 
 Load:
-	gcc $(CFLAGS) -o bin/client src/*.c src/client/*.c
-	gcc $(CFLAGS) -o bin/server src/*.c src/server/*.c
+	gcc $(CFLAGS) -o bin/client src/*.c src/client/*.c	
 
 .PHONY: runclient runserver test clean
 
