@@ -28,7 +28,7 @@ const char * bufferize_header(const struct header * header)
 const char * forge_tcp_packet(const struct packet * packet)
 {
     size_t data_size = packet->size;
-    data_size = !(data_size & 1) ? data_size : data_size << 1;
+    data_size = !(data_size & 1) ? data_size : data_size + 1;
 
     size_t hd_size = header_size(&packet->header);
 

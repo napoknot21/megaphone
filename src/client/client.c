@@ -218,9 +218,11 @@ void mp_shell()
 	size_t argc, llin = 0;
 
 	do {
-
+		if(data) free(data);
+	
 		printf("megaphone $ ");
 		getline(&data, &llin, stdin);
+	
 		char ** argv = parse_line(data, strlen(data), &argc);	
 
 		if(argc <= 1) continue;
@@ -243,7 +245,6 @@ void mp_shell()
 		}
 
 		free(argv);	
-		free(data);
 
 	} while(strcmp(data, "quit\n"));
 

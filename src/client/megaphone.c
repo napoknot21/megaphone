@@ -36,7 +36,6 @@ struct packet * mp_upload_post(const struct session * se, const struct post * p)
 
 	memset(pa, 0x0, sizeof(struct packet));
 	memset(&pa->header, 0x0, sizeof(pa->header));
-	memset(&pa->data, 0x0, sizeof(pa->data));
 
 	pa->data = p->data;
 	pa->size = strlen(p->data);
@@ -61,8 +60,7 @@ struct packet * mp_request_threads(const struct session * se, uint16_t thread, u
 	pa->header.fields = malloc(sizeof(3*sizeof(uint16_t)));
 
 	memset(pa, 0x0, sizeof(struct packet));
-	memset(&pa->header, 0x0, sizeof(pa->header));
-	memset(&pa->data, 0x0, sizeof(pa->data));
+	memset(&pa->header, 0x0, sizeof(pa->header));	
 	memset(&pa->header.fields, 0x0, sizeof(pa->header.fields));
 
 	pa->size = htonl(0);
@@ -86,8 +84,7 @@ struct packet * mp_subscribe(const struct session * se, uint16_t thread) {
 	pa->header.fields = malloc(sizeof(3*sizeof(uint16_t)));
 
 	memset(pa, 0x0, sizeof(struct packet));
-	memset(&pa->header, 0x0, sizeof(pa->header));
-	memset(&pa->data, 0x0, sizeof(pa->data));
+	memset(&pa->header, 0x0, sizeof(pa->header));	
 	memset(&pa->header.fields, 0x0, sizeof(pa->header.fields));
 
 	pa->size = 0;
@@ -114,8 +111,7 @@ struct packet * mp_request_for(const struct session * se, const request_code_t r
 	{
 	case SIGNUP:
 		printf("[!] Signing-up with username %s\n", argv[0]);
-		p = mp_signup(argv[0]);
-		// printf("%s", p->data);
+		p = mp_signup(argv[0]);	
 		break;
 	
 	case POST:
