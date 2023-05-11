@@ -18,9 +18,11 @@ struct packet
 {
     struct header header;
     
-    const char * data;
+    char * data;
     size_t size;
 };
+
+void free_packet(struct packet *);
 
 size_t header_size(const struct header *);
 const char * bufferize_header(const struct header *);

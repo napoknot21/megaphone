@@ -10,9 +10,9 @@
 #define REQUEST_CODE_SIZE_BITS 5
 #define USER_ID_SIZE_BITS 11
 #define FIELD_SIZE 2
-
 #define REQUEST_CODE_MASK 0xF800
 #define USER_ID_MASK 0x3FF
+#define TCP_BYTE_BLOCK_SIZE 512
 
 typedef enum request_code
 {
@@ -47,5 +47,21 @@ struct post
 
 	char * data;
 };
+
+struct session {
+
+	uuid_t uid;
+	long long time;
+
+};
+
+/*
+ * Megaphone's packet builder
+ */
+
+struct packet * mp_signup(const char*);
+struct packet * mp_upload_post(const struct session*, const struct post*);
+struct packet * mp_request_threads(const struct session*, uint16_t, uint16_t);
+struct packet * mp_subscribe(const struct session*, uint16_t);
 
 #endif

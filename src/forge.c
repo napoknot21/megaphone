@@ -78,3 +78,10 @@ struct packet * melt_tcp_packet(const char * bytes)
 
     return packet;
 }
+
+void free_packet(struct packet * p)
+{
+	free(p->header.fields);
+	free(p->data);
+	free(p);
+}
