@@ -28,11 +28,11 @@ const char * bufferize_header(const struct header * header)
 const char * forge_tcp_packet(const struct packet * packet)
 {
     size_t data_size = packet->size;
-    data_size = !(data_size & 1) ? data_size : data_size << 1;
+    data_size = !(data_size & 1) ? data_size : data_size + 1;
 
     size_t hd_size = header_size(&packet->header);
 
-    printf("[packet] hd(%ld) data(%ld)\n", hd_size, data_size);
+    printf("[!] Packet Forge:\n\tHeader size \t-- %ld\n\tData size \t-- %ld\n", hd_size, data_size);
 
     char * buffer = malloc(data_size + hd_size);
     const char * header_bytes = bufferize_header(&packet->header);

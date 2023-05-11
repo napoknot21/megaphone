@@ -1,6 +1,9 @@
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
 
+#include <stddef.h>
+#include <stdint.h>
+
 #define LAYER_TCP 0
 #define LAYER_UDP 1
 
@@ -11,18 +14,38 @@
 #define REQUEST_CODE_MASK 0xF800
 #define USER_ID_MASK 0x3FF
 
-#include <stdint.h>
-
 typedef enum request_code
 {
     SIGNUP = 0,
     POST,
     FETCH,
-    SUBSCRIBE,
-    UPLOAD,
-    DOWNLOAD
+    SUBSCRIBE, 
+    DOWNLOAD,
+    UNKNOWN
 } request_code_t;
 
+request_code_t string_to_code(const char * str);
+
 typedef uint16_t uuid_t;
+
+/*
+ * Message and file uploading are done by
+ * the same method, hence the post type and
+ * structure.
+ */
+
+enum post_type
+{
+	MESSAGE = 0,
+	MFILE
+};
+
+struct post
+{
+	uint16_t type;
+	uint16_t thread;
+
+	char * data;
+};
 
 #endif
