@@ -1,12 +1,12 @@
 #ifndef SERVER_H
 #define SERVER_H
 
+#include <stdint.h>
+
 #define BUFF_SIZE 4096 //tmp value
 #define MAX_CLIENTS 10
 
-#define SERVER_PORT 7000 //tmp value
-#define LOCAL_ADDR4 "127.0.0.1"
-#define LOCAL_ADDR6 "::1"
+#define LOCAL_ADDR "127.0.0.1"
 
 typedef struct sockaddr_in SA_IN;
 
@@ -31,24 +31,45 @@ void remove_client (int cli_sock);
 
 
 /**
- * @brief: Create a socket (for the server)
- * @return: In success, the socket number else, a exit value
- */
-int create_socket (void);
+ * @brief: Initialize the socket connection in UDP mode
+ * @param serv : the host serv structure
+ * @param domain : the host domain (AF_INET, AF_INET6, etc...)
+ * @param distant : string with the IP address
+ * @param port : port number
+ */ 
+int create_socket_tcp (struct host *serv, int domain, const char * distant, uint16_t port);
 
+
+/**
+ * @brief: Initialize the socket connection in UDP mode
+ * @param serv : the host serv structure
+ * @param domain : the host domain (AF_INET, AF_INET6, etc...)
+ * @param distant : string with the IP address
+ * @param port : port number
+ */ 
+int create_socket_upd (struct host *serv, int domain, const char * distant, uint16_t port);
 
 /**
  * @brief : Bind the socket server function
  * @param serv_socket : The server socket
  */
-void bind_socket (int serv_socket);
+//void bind_socket (int serv_socket);
 
 
 /**
- * @brief : Implementation of the listen functions
- * @param serv_socket : The server socket
+ * @brief : Implementation of the listen for a TCP connection
+ * @param serv : The server struct
+ * @param port : The port number
  */
-void listen_socket (int serv_socket);
+int listen_server_tcp (struct host *serv, uint16_t port);
+
+
+/**
+ * @brief : Implementation of the listen for a UDP connection
+ * @param serv : The server struct
+ * @param port : The port number
+ */
+int listen_server_udp (struct host *serv, uint16_t port);
 
 
 /**
@@ -64,13 +85,7 @@ int accept_connection (int sock_fd, SA_IN *cli_addr);
  * @brief : Close the socked
  * @param sock_fd : The socket to close
  */
-void close_socket (int sock_fd);
+void close_socket (struct host *serv);
 
-// Check functions
-/*
-int check_socket (int *serv_socket);
-int check_bind (int *serv_socket, SA_IN *serv_addr);
-int check_listen (int *serv_socket, int nb_connections);
-int check_accept (int *serv_socket, int *cli_socket, SA *cli_addr);
-*/
+
 #endif
