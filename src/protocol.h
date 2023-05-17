@@ -14,6 +14,12 @@
 #define USER_ID_MASK 0x3FF
 #define TCP_BYTE_BLOCK_SIZE 512
 
+#define MP_TCP_PORT 7777
+#define MP_UDP_PORT 6666
+
+#define MP_UDP_BLOCK_SIZE 512
+#define MP_NET_BUFFER_SIZE 512
+
 typedef enum request_code
 {
     SIGNUP = 0,
@@ -53,6 +59,12 @@ struct session {
 	uuid_t uid;
 	long long time;
 
+};
+
+struct host
+{
+	int tcp_sock;
+	int udp_sock;
 };
 
 /*

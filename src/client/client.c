@@ -9,7 +9,6 @@
 #include <sys/socket.h>
 #include "../forge.h"
 #include "../protocol.h"
-#include "../ui.h"
 #include "client.h"
 
 /*
@@ -17,7 +16,7 @@
  * tcp socket in the client structure.
  */
 
-int set_tcp_socket(struct client * cl, int domain, const char * distant, uint16_t port)
+int set_tcp_socket(struct host * cl, int domain, const char * distant, uint16_t port)
 {
 	cl->tcp_sock = socket(domain, SOCK_STREAM, 0);
 
@@ -64,7 +63,7 @@ int set_tcp_socket(struct client * cl, int domain, const char * distant, uint16_
  * back the raw received data.
  */
 
-int client_send_dataflow(const struct client * cl, const struct packet * p, char * rcv)
+int client_send_dataflow(const struct host * cl, const struct packet * p, char * rcv)
 {
 	const char * data = forge_tcp_packet(p);
 	int status = send(cl->tcp_sock, data, strlen(data), 0);	
@@ -76,16 +75,16 @@ int client_send_dataflow(const struct client * cl, const struct packet * p, char
 	}
 
 	ssize_t bytes, size = 0;
-	ssize_t reserve = TCP_RECV_BLOCK;
+	ssize_t reserve = MP_NET_BUFFER_SIZE;
 
 	do {
 		if(size >= reserve)
 		{
-			reserve += TCP_RECV_BLOCK;
+			reserve += MP_NET_BUFFER_SIZE;
 			rcv = realloc(rcv, reserve);
 		}
 
-		bytes = recv(cl->tcp_sock, rcv, TCP_RECV_BLOCK, 0);
+		bytes = recv(cl->tcp_sock, rcv, MP_NET_BUFFER_SIZE, 0);
 		size += bytes;
 
 	} while(bytes);
@@ -183,7 +182,7 @@ char ** parse_line(const char * line, size_t llen, size_t * argc)
  * client sockets (TCP & UDP)
  */
 
-void close_client(struct client * cl)
+void close_client(struct host * cl)
 {
 	close(cl->tcp_sock);
 	close(cl->udp_sock);
@@ -196,7 +195,7 @@ void close_client(struct client * cl)
 
 void mp_shell()
 {
-	struct client cl;
+	struct host cl;
 	memset(&cl, 0x0, sizeof(cl));
 
 	/*
@@ -204,7 +203,7 @@ void mp_shell()
 	 */
 
 	
-	if(set_tcp_socket(&cl, AF_INET, DEFAULT_BOOTSTRAP, DEFAULT_PORT))
+	if(set_tcp_socket(&cl, AF_INET, DEFAULT_BOOTSTRAP, MP_TCP_PORT))
 	{
 		printf("[-] Error while initializing client!\n");
 		return;
@@ -231,7 +230,7 @@ void mp_shell()
 		printf("[!] Request Code: %d\n", rc);
 		struct packet * p = mp_request_for(&se, rc, argc - 1, argv + 1);
 
-		char * rcv = malloc(TCP_RECV_BLOCK);
+		char * rcv = malloc(MP_NET_BUFFER_SIZE);
 		client_send_dataflow(&cl, p, rcv);
 
 		mp_recv(&se, rc, rcv);
