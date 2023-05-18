@@ -15,10 +15,28 @@ struct vector * make_vector(void* (*copy)(void*), void (*free)(void*), size_t el
 	return v;
 }
 
+struct vector * copy_vector(const struct vector * model)
+{
+	struct vector * copy = make_vector(model->copy, model->free, model->elem_size);
+	capacity(copy, model->capacity);
+
+	copy->size = model->size;
+
+	memmove(copy->data, copy->data, copy->size * copy->elem_size);
+
+	return copy;
+}
+
 void free_vector(struct vector * v)
 {
 	clear(v);
 	free(v);
+}
+
+void capacity(struct vector * v, size_t cap)
+{
+	v->capacity = cap;
+	v->data = realloc(v->data, cap * v->elem_size);
 }
 
 void clear(struct vector * v)
