@@ -32,44 +32,13 @@ void remove_client (int cli_sock);
 
 /**
  * @brief: Initialize the socket connection in UDP mode
- * @param serv : the host serv structure
+ * @param sock : The server socket
  * @param domain : the host domain (AF_INET, AF_INET6, etc...)
+ * @param protocol : The type of connection (TCP[SOCK_STREAM] or UDP[SOCK_DGRAM])
  * @param distant : string with the IP address
  * @param port : port number
  */ 
-int create_socket_tcp (struct host *serv, int domain, const char * distant, uint16_t port);
-
-
-/**
- * @brief: Initialize the socket connection in UDP mode
- * @param serv : the host serv structure
- * @param domain : the host domain (AF_INET, AF_INET6, etc...)
- * @param distant : string with the IP address
- * @param port : port number
- */ 
-int create_socket_upd (struct host *serv, int domain, const char * distant, uint16_t port);
-
-/**
- * @brief : Bind the socket server function
- * @param serv_socket : The server socket
- */
-//void bind_socket (int serv_socket);
-
-
-/**
- * @brief : Implementation of the listen for a TCP connection
- * @param serv : The server struct
- * @param port : The port number
- */
-int listen_server_tcp (struct host *serv, uint16_t port);
-
-
-/**
- * @brief : Implementation of the listen for a UDP connection
- * @param serv : The server struct
- * @param port : The port number
- */
-int listen_server_udp (struct host *serv, uint16_t port);
+int create_socket (int *sock, int domain, int protocol, const char * distant, uint16_t port);
 
 
 /**
@@ -79,13 +48,6 @@ int listen_server_udp (struct host *serv, uint16_t port);
  * @return : 0 if the socket is accepeted, else other integer
  */
 int accept_connection (int sock_fd, SA_IN *cli_addr);
-
-
-/**
- * @brief : Close the socked
- * @param sock_fd : The socket to close
- */
-void close_socket (struct host *serv);
 
 
 #endif

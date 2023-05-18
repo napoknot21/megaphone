@@ -82,19 +82,20 @@ void * handler_client (void * p_sock)
 */
 
 /**
- * @brief: Initialize the socket connection in TCP mode
- * @param serv : the host serv structure
+ * @brief: Initialize the socket connection in TCP/UDP mode
+ * @param sock : the socket pointer 
  * @param domain : the host domain (AF_INET, AF_INET6, etc...)
+ * @param protocol : The type of connection (UDP => SOCK_DGRAM or TCP => SOCK_STREAM)
  * @param distant : string with the IP address
  * @param port : port number
  */ /*
-int create_socket_tcp (struct host *serv, int domain, const char * distant, uint16_t port) 
+int create_socket (int *sock, int domain, int protocol, const char * distant, uint16_t port) 
 {
-    serv->tcp_sock = socket (domain, SOCK_STREAM, 0); 
+    *sock = socket (domain, protocol, 0); 
 
-    if (serv->tcp_sock) {
+    if (*sock < 0) {
         fprintf("[!] An error occurred creating socket...\n");
-        return -1;
+        exit(EXIT_FAILURE);
     }
 
     struct sockaddr serv_addr;
@@ -116,109 +117,31 @@ int create_socket_tcp (struct host *serv, int domain, const char * distant, uint
             inet_pton(AF_INET6, distant, serv_addr.sa_data+6);
             sockaddr_size = sizeof(struct sockaddr_in6);
             break;
+
     }
 
     memmove(serv_addr.sa_data, &nport, 2);
 
-    
-    int statusBind = bind (serv->tcp_sock, (struct sockaddr *) &serv_addr, sockaddr_size);
+    int statusBind = bind (*sock, (struct sockaddr *) &serv_addr, sockaddr_size);
 
-    if (statusBind) {
-        printf("[*] Server successfully bound !");
-    } else {
-        printf("[!] An error occurred while binding on the server !\n");
+    if (statusBind < 0) {
+        printf("[!] Error binding...\n");
+        close(*sock);
+        exit(EXIT_FAILURE);
     }
 
-    return statusBind;
+    if (protocol == SOCK_STREAM) return 0;
 
-}
+    int status = listen (*sock, (struct sockaddr *) &serv_addr, sockaddr_size);
 
-*/
-
-/**
- * @brief: Initialize the socket connection in UDP mode
- * @param serv : the host serv structure
- * @param domain : the host domain (AF_INET, AF_INET6, etc...)
- * @param distant : string with the IP address
- * @param port : port number
- */ /*
-int create_socket_udp (struct host *serv, int domain, const char *distant, uint16_t port)
-{
-    serv->udp_sock = socket (domain, SOCK_DGRAM, 0);
-
-    if (serv->udp_sock) {
-        printf("[!] An error occurred creating socket...\n");
-        return -1;
-    }
-
-    struct sockaddr serv_addr;
-    memset(&serv_addr, 0x00, sizeof(serv_addr));
-    serv_addr.sa_family = domain;
-
-    in_port_t nport = htons(port);
-    socklen_t sockaddr_size = 0;
-
-    switch (domain) {
-
-        case AF_INET :
-            inet_pton(AF_INET, distant, serv_addr.sa_data+2);
-            sockaddr_size = sizeof(struct sockaddr_in);
-            break;    
-
-        case AF_INET6 :
-            memset(serv_addr.sa_data, 0x00, sizeof(serv_addr).sa_data);
-            inet_pton(AF_INET6, distant, serv_addr.sa_data+6);
-            sockaddr_size = sizeof(struct sockaddr_in6);
-            break;
-    }
-
-    memmove(serv_addr.sa_data, &nport, 2);
-
-    int statusBind = bind (serv->tcp_sock, (struct sockaddr *) &serv_addr, sockaddr_size);
-
-    if (statusBind) {
-        printf("[*] Server successfully bound !");
-    } else {
-        printf("[!] An error occurred while binding on the server !\n");
-    }
-
-    return statusBind;
-
-}
-
-
-int listen_server_tcp (struct host *serv, uint16_t port) 
-{
-    int status = listen(serv->tcp_sock, 0);
-    
     if (!status) {
-        printf("[*] Server is listening on port: %d\n", port);
+        printf("[*] Server listening at %s:%d...\n", distant, port);
     } else {
-        printf("[!] An error occurred the server is listening...\n", socket_server);
+        printf("[*] An error occurred during listening by TCP/IP...\n");
     }
 
     return status;
-}
 
-
-int listen_server_udp (struct host *serv, uint16_t port)
-{
-    int status = listen(serv->udp_sock, 0);
-
-    if (!status) {
-        printf("[*] Server is listening on port: %d\n", port);
-    } else {
-        printf("[!] An error occurred the server is listening...\n", socket_server);
-    }
-
-    return status;
-}
-
-
-void close_socket (struct host *serv)
-{
-    close(serv->tcp_sock);
-	close(serv->udp_sock);
 }
 
 
@@ -228,7 +151,7 @@ void run_server ()
     struct host serv;
     memset(&serv, 0x00, sizeof(serv));
 
-    if ((&serv, AF_INET, DEFAULT_BOOTSTRAP, MP_TCP_PORT) != 0) {
+    if (create_socket(&serv.tcp_sock, AF_INET, SOCK_STREAM, DEFAULT_BOOTSTRAP, MP_TCP_PORT) != 0) {
         printf("[!] Error while initializing server !\n");
 		return;
 
