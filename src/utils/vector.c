@@ -1,6 +1,6 @@
 #include "vector.h"
 
-struct vector * make_vector(void (*free)(void*), size_t elem_size)
+struct vector * make_vector(void* (*copy)(void*), void (*free)(void*), size_t elem_size)
 {
 	struct vector * v = malloc(sizeof(struct vector));
 	memset(v, 0x0, sizeof(struct vector));
@@ -9,6 +9,7 @@ struct vector * make_vector(void (*free)(void*), size_t elem_size)
 	v->elem_size = elem_size;
 	v->data = malloc(v->capacity * v->elem_size);
 
+	v->copy = copy;
 	v->free = free;
 
 	return v;
@@ -22,12 +23,15 @@ void free_vector(struct vector * v)
 
 void clear(struct vector * v)
 {
-	for(size_t k = 0; k < v->size; v++)
+	for(size_t k = 0; v->free && k < v->size; v++)
 	{
 		void * el = (void*)((char*) v->data + k * v->elem_size);
 		if(!el) continue;
 		v->free(el);
 	}
+
+	v->size = 0;
+	memset(v->data, 0x0, v->capacity);
 }
 
 void push_back(struct vector * v, void * src)
@@ -37,8 +41,10 @@ void push_back(struct vector * v, void * src)
 		v->capacity *= 2;
 		v->data = realloc(v->data, v->capacity);
 	}
-	
-	memmove((char*) v->data + v->size, src, v->elem_size);
+
+	void * elem = (v->copy) ? v->copy(src) : src;
+
+	memmove((char*) v->data + v->size, elem, v->elem_size);
 	v->size++;
 }
 
@@ -46,6 +52,16 @@ void pop_back(struct vector * v)
 {
 	if(!v->size) return;
 
-	void * el = (void*)((char*) v->data + v->size - 1);
+	void * el = (void*)((char*) v->data + --v->size);
 	v->free(el);
+}
+
+void * at(struct vector * v, size_t i)
+{
+	if(i >= v->size)
+	{
+		return NULL;
+	}
+
+	return (void*)((char*) v->data + i * v->elem_size);
 }
