@@ -16,9 +16,9 @@
  * tcp socket in the client structure.
  */
 
-int set_tcp_socket(struct host * cl, int domain, const char * distant, uint16_t port)
+int set_socket(int * sock, int domain, int protocol, const char * distant, uint16_t port)
 {
-	cl->tcp_sock = socket(domain, SOCK_STREAM, 0);
+	*sock = socket(domain, protocol, 0);
 
 	struct sockaddr sa;
 	memset(&sa, 0x0, sizeof(sa));
@@ -43,7 +43,9 @@ int set_tcp_socket(struct host * cl, int domain, const char * distant, uint16_t 
 
 	memmove(sa.sa_data, &nport, 2);
 
-	int status = connect(cl->tcp_sock, &sa, sockaddr_size);
+	if(protocol == SOCK_DGRAM) return 0;
+
+	int status = connect(*sock, &sa, sockaddr_size);
 
 	if(!status)
 	{
@@ -185,7 +187,11 @@ char ** parse_line(const char * line, size_t llen, size_t * argc)
 void close_client(struct host * cl)
 {
 	close(cl->tcp_sock);
-	close(cl->udp_sock);
+	
+	for(size_t k = 0; k < cl->udp_sock_size; k++)
+	{
+		close(cl->udp_sock[k]);
+	}
 }
 
 /*
@@ -201,14 +207,12 @@ void mp_shell()
 	/*
 	 * There we add TCP/IP socket
 	 */
-
 	
-	if(set_tcp_socket(&cl, AF_INET, DEFAULT_BOOTSTRAP, MP_TCP_PORT))
+	if(set_socket(&cl.tcp_sock, AF_INET, SOCK_STREAM, DEFAULT_BOOTSTRAP, MP_TCP_PORT))
 	{
 		printf("[-] Error while initializing client!\n");
 		return;
 	}
-	
 
 	struct session se; 
 	memset(&se, 0x0, sizeof(se));

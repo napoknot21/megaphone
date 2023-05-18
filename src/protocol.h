@@ -64,7 +64,9 @@ struct session {
 struct host
 {
 	int tcp_sock;
-	int udp_sock;
+	int * udp_sock;
+
+	size_t udp_sock_size;
 };
 
 /*
