@@ -1,4 +1,5 @@
 #include "protocol.h"
+#include "utils/vector.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -90,6 +91,47 @@ struct packet * melt_tcp_packet(const char * bytes)
     return p;
 }
 
+struct post * copy_post(const struct post * pt)
+{
+	struct post * copy = malloc(sizeof(struct post));
+	memset(copy, 0x0, sizeof(struct post));
+
+	copy->type = pt->type;
+	copy->uuid = pt->uuid;
+
+	size_t dps = strlen(pt->data);
+
+	copy->data = malloc(dps);
+	memmove(copy->data, pt->data, dps);
+
+	return copy;
+}
+
+void free_post(struct post * pt)
+{
+	if(pt->data) free(pt->data);
+	free(pt);
+}
+
+struct thread * copy_thread(const struct thread * th)
+{
+	struct thread * copy = malloc(sizeof(struct thread));
+	memset(copy, 0x0, sizeof(struct thread));
+
+	copy->seed = th->seed;
+	copy->addr = th->addr;
+
+	copy->posts = copy_vector(th->posts);
+
+	return copy;
+}
+
+void free_thread(struct thread * th)
+{
+	free_vector(th->posts);
+	free(th);
+}
+
 struct session * copy_session(struct session * model)
 {
 	struct session * copy = malloc(sizeof(struct session));
@@ -110,4 +152,9 @@ void free_session(struct session * se)
 {
 	free(se->username);
 	free(se);
+}
+
+void print_post(const struct post * pt)
+{
+	
 }

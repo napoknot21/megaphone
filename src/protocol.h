@@ -55,10 +55,25 @@ enum post_type
 struct post
 {
 	uint16_t type;
-	uint16_t thread;
+	uid_t uuid;	
 
 	char * data;
 };
+
+struct post * copy_post(const struct post*);
+void free_post(struct post*);
+void print_post(const struct post *);
+
+struct thread
+{
+	uid_t seed;
+	struct in6_addr addr;
+
+	struct vector * posts;
+};
+
+struct thread * copy_thread(const struct thread*);
+void free_thread(struct thread*);
 
 struct session 
 {
@@ -86,7 +101,7 @@ uid_t get_uuid(uint16_t);
 uint16_t fusion(uint16_t, uint16_t);
 
 struct packet * mp_signup(char*);
-struct packet * mp_upload_post(const struct session*, const struct post*);
+struct packet * mp_upload_post(const struct session*, struct post*, uint16_t);
 struct packet * mp_request_threads(const struct session*, uint16_t, uint16_t);
 struct packet * mp_subscribe(const struct session*, uint16_t);
 

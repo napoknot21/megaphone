@@ -33,14 +33,14 @@ struct packet * mp_signup(char * username)
  * the corresponding request code POST.
  */
 
-struct packet * mp_upload_post(const struct session * se, const struct post * pt) 
+struct packet * mp_upload_post(const struct session * se, struct post * pt, uint16_t thread) 
 {
 	struct packet * p = make_packet(); 
 
 	p->data = pt->data;
 	p->size = strlen(pt->data);
-	fill_header(&p->header, POST, se->uid, pt->thread, 0, p->size);
-	
+	fill_header(&p->header, POST, se->uid, thread, 0, p->size);
+
 	return p;
 }
 
@@ -96,9 +96,9 @@ struct packet * mp_request_for(const struct session * se, const request_code_t r
 		}
 
 		memmove(&thread, argv[0], 2);
-		struct post message_post = {MESSAGE, thread, argv[1]};
+		struct post message_post = {MESSAGE, se->uid, argv[1]};
 
-		p = mp_upload_post(se, &message_post);
+		p = mp_upload_post(se, &message_post, thread);
 		break;
 	
 	case FETCH:
