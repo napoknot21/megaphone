@@ -3,10 +3,24 @@
 #include <string.h>
 #include <math.h>
 #include "megaphone.h"
+#include "../utils/vector.h"
 
 uint16_t i = 0;
+struct vector * sessions;
 
-int make_id() {
+struct session * get_session(const uid_t uuid)
+{
+	for(size_t k = 0; k < sessions->size; k++)
+	{
+		struct session * se = at(sessions, k);
+		if(se->uid == uuid) return se;
+	}
+
+	return NULL;
+}
+
+uid_t gen_id() 
+{
 	return i + 1 < pow(2, 11) ? ++i : 0;
 }
 
@@ -14,7 +28,17 @@ struct packet * mp_signup(char * username)
 {
     struct packet * p = make_packet();
 
-    uint16_t lfield = fusion(SIGNUP, make_id());
+    struct session se;
+    memset(&se, 0x0, sizeof(se));
+
+    se.uid = gen_id();
+    se.username = username;
+
+    push_back(sessions, (void *) &se);
+
+    printf("[i] %s subscribed!", username);
+
+    uint16_t lfield = fusion(SIGNUP, se.uid);
     p->header.fields = malloc(FIELD_SIZE);
     p->header.size = 1;
 
@@ -40,6 +64,15 @@ struct packet * mp_subscribe(const struct session * se, uint16_t thread)
 
 struct packet * mp_process_data(const char * data)
 {
+    if(!sessions)
+    {
+	    sessions = make_vector(
+			    (void* (*)(void*)) copy_session,
+			    (void (*)(void*)) free_session, 
+			    sizeof(struct session)
+	    );
+    }
+
     struct packet * recv_p = melt_tcp_packet(data);
     struct packet * send_p = NULL;
 

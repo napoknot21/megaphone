@@ -86,3 +86,25 @@ struct packet * melt_tcp_packet(const char * bytes)
 
     return p;
 }
+
+struct session * copy_session(struct session * model)
+{
+	struct session * copy = malloc(sizeof(struct session));
+	memset(copy, 0x0, sizeof(struct session));
+
+	copy->uid = model->uid;
+
+	size_t us = strlen(model->username);
+	copy->username = malloc(us + 1);
+	
+	copy->username[us] = 0x0;
+	memmove(copy->username, model->username, us + 1);
+
+	return copy;
+}
+
+void free_session(struct session * se)
+{
+	free(se->username);
+	free(se);
+}

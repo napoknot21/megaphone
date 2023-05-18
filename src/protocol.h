@@ -66,6 +66,9 @@ struct session
 	char * username;	
 };
 
+struct session * copy_session(struct session *);
+void free_session(struct session*);
+
 struct host
 {
 	int tcp_sock;
@@ -73,10 +76,6 @@ struct host
 
 	size_t udp_sock_size;
 };
-
-/*
- * Megaphone's packet builder
- */
 
 void fill_header(struct header *, uint16_t, uid_t, uint16_t, uint16_t, uint16_t);
 struct packet * melt_tcp_packet(const char*);
