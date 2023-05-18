@@ -1,15 +1,16 @@
 #ifndef FORGE_H
 #define FORGE_H
 
-#include "protocol.h"
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <arpa/inet.h>
+
+#define FIELD_SIZE 		2
+#define TCP_BYTE_BLOCK_SIZE 	512
 
 struct header
 {
-    request_code_t code;
-    uuid_t id;
-
     uint16_t * fields;
     size_t size;
 };
@@ -22,12 +23,10 @@ struct packet
     size_t size;
 };
 
-void free_packet(struct packet *);
+struct packet * make_packet();
+void free_packet(struct packet*);
 
-size_t header_size(const struct header *);
-const char * bufferize_header(const struct header *);
-
-const char * forge_tcp_packet(const struct packet *);
-struct packet * melt_tcp_packet(const char *);
+const char * bufferize(const struct header*);
+const char * forge_tcp_packet(const struct packet*);
 
 #endif

@@ -11,14 +11,16 @@
  * SIGNUP.
  */
 
-struct packet * mp_signup(const char * username) 
+struct packet * mp_signup(char * username) 
 {
-	struct packet * p = malloc(sizeof(struct packet));
-	
-	memset(p, 0x0, sizeof(struct packet));
-	memset(&p->header, 0x0, sizeof(p->header));
+	struct packet * p = make_packet();
 
-	p->header.code = SIGNUP;
+	p->header.fields = malloc(FIELD_SIZE);
+	p->header.size = 1;
+
+	uint16_t lfield = fusion(SIGNUP, 0);
+		
+	p->header.fields[MP_FIELD_CR_UUID] = htons(lfield);
 	p->data = username;
 	p->size = strlen(username);
 
@@ -31,22 +33,15 @@ struct packet * mp_signup(const char * username)
  * the corresponding request code POST.
  */
 
-struct packet * mp_upload_post(const struct session * se, const struct post * p) {
-	struct packet * pa = malloc(sizeof(struct packet));
+struct packet * mp_upload_post(const struct session * se, const struct post * pt) 
+{
+	struct packet * p = make_packet(); 
 
-	memset(pa, 0x0, sizeof(struct packet));
-	memset(&pa->header, 0x0, sizeof(pa->header));
-
-	pa->data = p->data;
-	pa->size = strlen(p->data);
-	pa->header.code = POST;
-	pa->header.id = htonl(se->uid);
-	pa->header.fields = malloc(sizeof(3*sizeof(uint16_t)));
-	pa->header.fields[0] = htonl(p->thread);
-	pa->header.fields[1] = htonl(0);
-	pa->header.fields[2] = strlen(p->data);
-
-	return pa;
+	p->data = pt->data;
+	p->size = strlen(pt->data);
+	fill_header(&p->header, POST, se->uid, pt->thread, 0, p->size);
+	
+	return p;
 }
 
 /*
@@ -54,22 +49,12 @@ struct packet * mp_upload_post(const struct session * se, const struct post * p)
  * the corresponding request code FETCH.
  */
 
-struct packet * mp_request_threads(const struct session * se, uint16_t thread, uint16_t n) {
-	struct packet * pa = malloc(sizeof(struct packet));
+struct packet * mp_request_threads(const struct session * se, uint16_t thread, uint16_t n) 
+{
+	struct packet * p = make_packet();
+	fill_header(&p->header, FETCH, se->uid, thread, n, 0);
 
-	pa->header.fields = malloc(sizeof(3*sizeof(uint16_t)));
-
-	memset(pa, 0x0, sizeof(struct packet));
-	memset(&pa->header, 0x0, sizeof(pa->header));	
-	memset(&pa->header.fields, 0x0, sizeof(pa->header.fields));
-
-	pa->size = htonl(0);
-	pa->header.code = FETCH;
-	pa->header.id = htonl(se->uid);
-	pa->header.fields[0] = htonl(thread);
-	pa->header.fields[1] = htonl(n);
-	
-	return pa;
+	return p;
 }
 
 /*
@@ -78,22 +63,12 @@ struct packet * mp_request_threads(const struct session * se, uint16_t thread, u
  * SUBSCRIBE.
  */
 
-struct packet * mp_subscribe(const struct session * se, uint16_t thread) {
-	struct packet * pa = malloc(sizeof(struct packet));
+struct packet * mp_subscribe(const struct session * se, uint16_t thread) 
+{
+	struct packet * p = malloc(sizeof(struct packet));
+	fill_header(&p->header, SUBSCRIBE, se->uid, thread, 0, 0);
 
-	pa->header.fields = malloc(sizeof(3*sizeof(uint16_t)));
-
-	memset(pa, 0x0, sizeof(struct packet));
-	memset(&pa->header, 0x0, sizeof(pa->header));	
-	memset(&pa->header.fields, 0x0, sizeof(pa->header.fields));
-
-	pa->size = 0;
-	pa->header.code = SUBSCRIBE;
-	pa->header.id = htonl(se->uid);
-	pa->header.fields[0] = htonl(thread);
-	pa->header.fields[1] = htonl(0);
-	
-	return pa;
+	return p;
 }
 
 /*
