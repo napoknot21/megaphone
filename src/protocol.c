@@ -68,6 +68,7 @@ struct packet * melt_tcp_packet(const char * bytes)
     uint16_t lfield;
     memmove(&lfield, bytes, 2); 
 
+    lfield = ntohs(lfield);
     uint16_t code = get_rq_code(lfield);
 
     if(code > DOWNLOAD)
@@ -82,6 +83,8 @@ struct packet * melt_tcp_packet(const char * bytes)
         p->header.size = MP_HEADER_FIELD_SIZE * FIELD_SIZE;
         p->header.fields = malloc(p->header.size);
         memmove(&p->header.fields, bytes, p->header.size);
+
+	for(size_t i = 0; i < MP_HEADER_FIELD_SIZE; i++) p->header.fields[i] = ntohs(p->header.fields[i]);
     }
 
     return p;
