@@ -96,12 +96,34 @@ struct packet * mp_upload_post(const struct session * se, struct post * pt, uint
 
 struct packet * mp_request_threads(const struct session * se, uint16_t thread, uint16_t n)
 {
+	struct packet * p = malloc(sizeof(struct packet)*(n+1));
+
+	memset(p, 0x0, sizeof(struct packet));
+	memset(&p->header, 0x0, sizeof(struct header));
+
+	struct thread * th = at(threads, thread);
+
+	ssize_t nb_msg = th->posts->size < n ? th->posts->size : n;
+
+	p[0].header.fields[MP_FIELD_THREAD] = htonl(thread);
+	sprintf(p[0].data, "Voici les %ld premier messages du fil %d", nb_msg, thread);
+	p[0].size = strlen(p[0].data);
+
+	for (int i = 0; i < nb_msg; i++)
+	{
+		p[i+1].header.fields[MP_FIELD_THREAD] = htonl(thread);
+		p[i+1].data = (char*) (th->posts)[i].data;
+		p[i+1].size = strlen(p[i+1].data);
+	}
+
+	return p;
 
 }
 
 struct packet * mp_subscribe(const struct session * se, uint16_t thread)
 {
-
+	struct packet * p = make_packet();
+	return p;
 }
 
 struct packet * mp_process_data(const char * data)
@@ -133,9 +155,9 @@ struct packet * mp_process_data(const char * data)
 	send_p = mp_signup(recv_p->data);
         break;
 
-    case POST:
+    case POST: ;
         uint16_t thread = recv_p->header.fields[MP_FIELD_THREAD];	
-	struct post pt = {MESSAGE, se->uid, recv_p->data};
+		struct post pt = {MESSAGE, se->uid, recv_p->data};
 
         send_p = mp_upload_post(se, &pt, thread);
 	
