@@ -59,6 +59,114 @@ int set_socket(int * sock, int domain, int protocol, const char * distant, uint1
 	return status;
 }
 
+int link_udp_socket (int * sock, int domain, const char* sub_addr, uint16_t sub_port)
+{
+	int ok = 1;
+  	if(setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &ok, sizeof(ok)) < 0) 
+	{
+    	close(sock);
+    	return 1;
+  	}
+
+	struct sockaddr_in fil_sock;
+	memset(&fil_sock, 0x0, sizeof(fil_sock));
+
+	int ifindex = if_nametoindex ("eth0");
+
+	switch(domain)
+	{
+	case AF_INET:
+		fil_sock.sin_family = AF_INET;
+		fil_sock.sin_addr.s_addr = htonl(INADDR_ANY);
+		fil_sock.sin_port = htons(sub_port);
+		struct ip_mreqn fil;
+		memset(&fil, 0x0, sizeof(fil));
+		fil.imr_multiaddr.s_addr = inet_addr(sub_addr);
+		fil.imr_ifindex = ifindex;
+		if(setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &fil, sizeof(fil)) < 0) 
+		{
+    		close(sock);
+    		return 1;
+  		}
+
+		break;
+
+	case AF_INET6:
+		fil_sock.sin6_family = AF_INET6;
+  		fil_sock.sin6_addr = in6addr_any;
+  		fil_sock.sin6_port = htons(sub_port);
+		struct ipv6_mreq fil6;
+		memset(&fil, 0x0, sizeof(fil6));
+		inet_pton (AF_INET6, sub_addr, &fil6.ipv6mr_multiaddr.s6_addr);
+  		fil6.ipv6mr_interface = ifindex;
+		if(setsockopt(sock, IPPROTO_IPV6, IPV6_JOIN_GROUP, &fil6, sizeof(fil6)) < 0) 
+		{
+    		close(sock);
+    		return 1;
+  		}
+
+		break;
+	}
+
+	if(bind(sock, (struct sockaddr*) &fil_sock, sizeof(fil_sock))) 
+	{
+    	close(sock);
+    	return 1;
+  	}
+
+	return 0;
+
+}
+
+fd_set * make_fd_set(struct host * cl, char** sub_addr, int nb_addr)
+{
+	fd_set rset;
+	FD_ZERO(&rset);
+
+	for (int i = 0; i < nb_addr; i++)
+	{
+		if(set_socket((cl->udp_sock)[i], AF_INET, SOCK_DGRAM, DEFAULT_BOOTSTRAP, MP_UDP_PORT))
+		{
+			printf("[-] Error while initializing udp socket !\n");
+			return -1;
+		}
+
+		link_udp_socket ((cl->udp_sock)[i], AF_INET, sub_addr[i], MP_UDP_PORT);
+
+		cl->udp_sock_size += sizeof((cl->udp_sock)[i]);
+		
+		FD_SET(cl->udp_sock[i], &rset);
+
+	}
+
+	return &rset;
+
+}
+
+int client_recv_dataflow(struct host * cl, char** sub_addr, int nb_addr) 
+{
+	fd_set * rset = make_fd_set(cl,sub_addr,nb_addr);
+
+	ssize_t size = 0;
+	while(size < (cl->udp_sock_size))
+	{
+		char buf[MP_UDP_BLOCK_SIZE];
+		memset(buf, 0x0, sizeof(buf));
+		
+		struct timeval * t;
+		memset(t, 0x0, sizeof(t));
+		t->tv_usec = 100;
+
+		int to_read = select(max(rset)+1, rset, NULL, 0, t);
+		recv(to_read, buf, strlen(buf), 0);
+		printf(buf);
+		size += sizeof((cl->udp_sock)[size]);
+	}
+
+	return 0;
+	
+}
+
 /*
  * This method manages to send a packet
  * structure through TCP/IP layer. It gives
@@ -105,44 +213,37 @@ int client_send_dataflow(const struct host * cl, const struct packet * p, char *
  * @param addrlen est la taille de l'adresse.
  * @return -1 si le serveur n'a pas été trouver, -2 si la socket ne s'est pas crée, 0 si tout c'est bien passé.
  */
-int get_server_addr(char* hostname, char* port, int * sock, struct sockaddr_in6** addr, int* addrlen) {
+struct sockaddr_in6** get_server_addr(char* hostname, char* port, int * sock, struct sockaddr_in6** addr, int* addrlen) {
     struct addrinfo hints;
     struct addrinfo *r;
     struct addrinfo *p;
-    int ret;
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET6;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_V4MAPPED | AI_ALL;
 
-    if ((ret = getaddrinfo(hostname, port, &hints, &r)) != 0 || r == NULL){
-        fprintf(stderr, "erreur getaddrinfo : %s\n", gai_strerror(ret));
+    if ((getaddrinfo(hostname, port, &hints, &r)) != 0 || r == NULL)
+	{
+        perror("addrinfo");
         return -1;
     }
 
     *addrlen = sizeof(struct sockaddr_in6);
+	ssize_t nb_addr = 0;
+
     p = r;
     while( p != NULL ){
-        if((*sock = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) > 0){
-            if(connect(*sock, p->ai_addr, *addrlen) == 0)
-	        break;
-      
-            close(*sock);
-        }
-
+        *(addr + nb_addr) = (struct sockaddr_in6 *) p->ai_addr;
+		nb_addr += 1;
         p = p->ai_next;
     }
 
     if (p == NULL) return -2;
 
-    //on stocke l'adresse de connexion
-    *addr = (struct sockaddr_in6 *) p->ai_addr;
-
-    //on libère la mémoire allouée par getaddrinfo 
     freeaddrinfo(r);
     
-    return 0;
+    return addr;
 }
 
 /*
