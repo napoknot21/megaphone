@@ -14,13 +14,13 @@
 #include "../protocol.h"
 #include "../utils/string.h"
 
-/*
+
 
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_t threads[MAX_CLIENTS];
 int handlers = 0;
 
-
+/*
 void remove_client(int cli_sock) 
 {
     pthread_mutex_lock(&lock);
@@ -88,7 +88,7 @@ void * handler_client (void * p_sock)
  * @param protocol : The type of connection (UDP => SOCK_DGRAM or TCP => SOCK_STREAM)
  * @param distant : string with the IP address
  * @param port : port number
- */ /*
+ */
 int create_socket (int *sock, int domain, int protocol, const char * distant, uint16_t port) 
 {
     *sock = socket (domain, protocol, 0); 
@@ -132,7 +132,7 @@ int create_socket (int *sock, int domain, int protocol, const char * distant, ui
 
     if (protocol == SOCK_STREAM) return 0;
 
-    int status = listen (*sock, (struct sockaddr *) &serv_addr, sockaddr_size);
+    int status = listen (*sock, 0);
 
     if (!status) {
         printf("[*] Server listening at %s:%d...\n", distant, port);
@@ -144,6 +144,71 @@ int create_socket (int *sock, int domain, int protocol, const char * distant, ui
 
 }
 
+/*
+
+int create_udp_sockets (struct host *serv, size_t size, int domain) 
+{
+    serv->udp_sock = malloc (sizeof(int) * size);
+    serv->udp_sock_size = size;
+
+    for (size_t i = 0; i < size; ++i) {
+
+        server->udp_sock[i] = socket(domain, SOCK_DGRAM, 0);
+        
+        if (server->udp_sock[i] < 0) {
+            perror("[!] UDP socket error...\n");
+            return 1;
+        }
+    
+    }
+
+    return 0;
+}
+
+
+int join_multicast_group(int sock, char* group_address) 
+{
+    struct ip_mreqn mreq;
+
+    memset(&mreq, 0x00, sizeof(mreq));
+    mreq.imr_multiaddr.s_addr = inet_addr(group_address); 
+    mreq.imr_address.s_addr = htonl(INADDR_ANY);
+
+    if (setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (void*)&mreq, sizeof(mreq)) < 0) {
+        perror("Adding multicast group error");
+        return 1;
+    }
+
+    return 0;
+}
+
+
+
+
+int accept_client (*sock_serv, struct host *cl) 
+{
+    socklen_t peer_addr_size = sizeof(cl);
+
+    &
+           cfd = accept(sfd, (struct sockaddr *) &peer_addr,
+                        &peer_addr_size);
+    int status = accept ()
+}
+
+
+void bind_socket_to_port(int sock, uint16_t port) {
+    struct sockaddr_in server_address;
+
+    memset(&server_address, 0, sizeof(server_address));
+    server_address.sin_family = AF_INET;
+    server_address.sin_port = htons(port);
+    server_address.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    if (bind(sock, (struct sockaddr *)&server_address, sizeof(server_address)) < 0) {
+        perror("Bind error");
+        exit(1);
+    }
+}
 
 
 void run_server () 
@@ -154,14 +219,11 @@ void run_server ()
     if (create_socket(&serv.tcp_sock, AF_INET, SOCK_STREAM, DEFAULT_BOOTSTRAP, MP_TCP_PORT) != 0) {
         printf("[!] Error while initializing server !\n");
 		return;
-
     }
     
-    int serv_socket, cli_socket;    
+    int cli_socket;    
     pthread_t thread_id;
     socklen_t addrlen;
-
-    printf("[*] Server started on port %d...\n", );
 
     while (1) {
 
@@ -195,12 +257,10 @@ void run_server ()
 }
 
 
-
+*/
 int main (int argc, char **argv) 
 {
-    run_server();
-    //pthread_mutex_destroy(&lock);
+    //run_server();
+    pthread_mutex_destroy(&lock);
     return 0;
 }
-
-*/
