@@ -96,28 +96,23 @@ struct packet * mp_upload_post(const struct session * se, struct post * pt, uint
 
 struct packet * mp_request_threads(const struct session * se, uint16_t thread, uint16_t n)
 {
-	struct packet * p = malloc(sizeof(struct packet)*(n+1));
+	struct packet * p;
 
-	memset(p, 0x0, sizeof(struct packet));
-	memset(&p->header, 0x0, sizeof(struct header));
-
-	struct thread * th = at(threads, thread);
-
-	ssize_t nb_msg = th->posts->size < n ? th->posts->size : n;
-
-	p[0].header.fields[MP_FIELD_THREAD] = htonl(thread);
-	sprintf(p[0].data, "Voici les %ld premier messages du fil %d", nb_msg, thread);
-	p[0].size = strlen(p[0].data);
-
-	for (int i = 0; i < nb_msg; i++)
+	if(thread < threads->size)
 	{
-		p[i+1].header.fields[MP_FIELD_THREAD] = htonl(thread);
-		p[i+1].data = (char*) (th->posts)[i].data;
-		p[i+1].size = strlen(p[i+1].data);
+		struct thread * th = at(threads, thread);
+		
+		size_t ps = th->posts->size;
+		size_t beg = n <= ps ? ps - n : 0;
+
+		for(size_t k = beg; k < ps; k++)
+		{
+			struct post * pt = at(th->posts, k);
+
+		}
 	}
 
 	return p;
-
 }
 
 struct packet * mp_subscribe(const struct session * se, uint16_t thread)
