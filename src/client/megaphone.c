@@ -39,7 +39,10 @@ struct packet * mp_upload_post(const struct session * se, struct post * pt, uint
 
 	p->data = pt->data;
 	p->size = strlen(pt->data);
-	fill_header(&p->header, POST, se->uid, thread, 0, p->size);
+
+	struct mp_header mhd = {POST, se->uid, thread, 0, p->size};
+
+	fill_header(&p->header, mhd);
 
 	return p;
 }
@@ -52,7 +55,9 @@ struct packet * mp_upload_post(const struct session * se, struct post * pt, uint
 struct packet * mp_request_threads(const struct session * se, uint16_t thread, uint16_t n) 
 {
 	struct packet * p = make_packet();
-	fill_header(&p->header, FETCH, se->uid, thread, n, 0);
+	struct mp_header mhd = {FETCH, se->uid, thread, n, 0};
+
+	fill_header(&p->header, mhd);
 
 	return p;
 }
@@ -66,7 +71,9 @@ struct packet * mp_request_threads(const struct session * se, uint16_t thread, u
 struct packet * mp_subscribe(const struct session * se, uint16_t thread) 
 {
 	struct packet * p = malloc(sizeof(struct packet));
-	fill_header(&p->header, SUBSCRIBE, se->uid, thread, 0, 0);
+	struct mp_header mhd = {SUBSCRIBE, se->uid, thread, 0, 0};
+	
+	fill_header(&p->header, mhd);
 
 	return p;
 }
@@ -135,24 +142,37 @@ struct packet * mp_request_for(const struct session * se, const request_code_t r
  * code.
  */
 
-int mp_recv(struct session * se, const request_code_t rc, const char * data)
+int mp_recv(struct session * se, const char * data)
 {
-	switch(rc)
+	struct packet * p = melt_tcp_packet(data);
+	struct mp_header mhd;
+
+	melt_header(&mhd, &p->header);
+
+	switch(mhd.rc)
 	{
 	case SIGNUP:
-		memmove(&se->uid, data, sizeof(uuid_t));
-		printf("[+] You successfully signed-up to the network!\n");
+		se->uid = mhd.uuid;	
+		printf("[i] You successfully signed-up to the network!\n");
 		break;
+
 	case POST:
+		printf("[i] Your post has been successfully uploaded!\n");
 		break;
+
 	case FETCH:
+		printf("[i] %d post(s) fetched!\n%s\n", mhd.n, p->data);
 		break;
+
 	case SUBSCRIBE:
+		printf("[i] You successfully subscribed to %d thread!\n", mhd.nthread);
 		break;
+
 	case DOWNLOAD:
 		break;
-	case UNKNOWN:
-		break;
+
+	default:
+		printf("[-] Error %d has occured!\n", mhd.rc);
 	}
 
 	return 0;

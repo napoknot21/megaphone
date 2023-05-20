@@ -29,4 +29,6 @@ void free_packet(struct packet*);
 const char * bufferize(const struct header*);
 const char * forge_tcp_packet(const struct packet*);
 
+unsigned get_interface(int, int);
+
 #endif

@@ -26,6 +26,28 @@ uid_t gen_id()
 	return i + 1 < pow(2, 11) ? ++i : 0;
 }
 
+void mp_init()
+{
+	sessions = make_vector(
+		(void* (*)(void*)) copy_session,
+		(void (*)(void*)) free_session, 
+		sizeof(struct session)
+	);
+
+	threads = make_vector(
+		(void* (*)(void*)) copy_thread,
+		(void (*)(void*)) free_session,
+		sizeof(struct session)
+	);
+
+}
+
+void mp_close()
+{
+	free_vector(sessions);
+	free_vector(threads);
+}
+
 struct packet * mp_signup(char * username)
 {
     struct packet * p = make_packet();
@@ -123,15 +145,6 @@ struct packet * mp_subscribe(const struct session * se, uint16_t thread)
 
 struct packet * mp_process_data(const char * data)
 {
-    if(!sessions)
-    {
-	    sessions = make_vector(
-			    (void* (*)(void*)) copy_session,
-			    (void (*)(void*)) free_session, 
-			    sizeof(struct session)
-	    );
-    }
-
     struct packet * recv_p = melt_tcp_packet(data);
     struct packet * send_p = NULL;
 
@@ -152,7 +165,7 @@ struct packet * mp_process_data(const char * data)
 
     case POST: ;
         uint16_t thread = recv_p->header.fields[MP_FIELD_THREAD];	
-		struct post pt = {MESSAGE, se->uid, recv_p->data};
+	struct post pt = {MESSAGE, se->uid, recv_p->data};
 
         send_p = mp_upload_post(se, &pt, thread);
 	

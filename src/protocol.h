@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "forge.h"
+#include "utils/vector.h"
 
 #define LAYER_TCP 		0
 #define LAYER_UDP 		1
@@ -15,6 +16,7 @@
 
 #define MP_TCP_PORT 		7777
 #define MP_UDP_PORT 		6666
+#define MP_MULTICAST_PORT	1122
 
 #define MP_UDP_BLOCK_SIZE 	512
 #define MP_NET_BUFFER_SIZE 	512
@@ -28,12 +30,11 @@
 
 typedef enum request_code
 {
-    SIGNUP = 0,
+    SIGNUP = 1,
     POST,
     FETCH,
     SUBSCRIBE, 
-    DOWNLOAD,
-    UNKNOWN
+    DOWNLOAD
 } request_code_t;
 
 request_code_t string_to_code(const char * str);
@@ -87,12 +88,28 @@ void free_session(struct session*);
 struct host
 {
 	int tcp_sock;
-	int * udp_sock;
-
-	size_t udp_sock_size;
+	struct vector * udp_socks;	
 };
 
-void fill_header(struct header *, uint16_t, uid_t, uint16_t, uint16_t, uint16_t);
+struct host * make_host();
+void free_host(struct host*);
+
+struct mp_header
+{
+	uint16_t rc;
+	uid_t uuid;
+
+	uint16_t nthread;
+	uint16_t n;
+	uint16_t len;
+};
+
+void mp_init();
+void mp_close();
+
+void fill_header(struct header*, const struct mp_header);
+void melt_header(struct mp_header*, const struct header*);
+
 struct packet * melt_tcp_packet(const char*);
 
 uint16_t get_rq_code(uint16_t);

@@ -13,7 +13,7 @@ struct string
 
 struct string * make_string();
 void string_push_back(struct string *, const char *, size_t);
-char pop_back();
+char string_pop_back();
 void free_string(struct string *);
 
 #endif

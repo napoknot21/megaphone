@@ -5,25 +5,47 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-void fill_header
-(
-		struct header * hd, 
-		uint16_t code, 
-		uid_t uid, 
-		uint16_t nthread, 
-		uint16_t n, 
-		uint16_t datalen
-)
+struct host * make_host()
+{
+	struct host * h = malloc(sizeof(struct host));
+	memset(h, 0x0, sizeof(struct host));
+
+	h->udp_socks = make_vector(NULL, NULL, sizeof(int));
+
+	return h;
+}
+
+void free_host(struct host * h)
+{
+	free_vector(h->udp_socks);
+	free(h);
+}
+
+void fill_header(struct header * hd, const struct mp_header mhd)
 {
 	memset(hd, 0x0, sizeof(struct header));
 	hd->fields = malloc(sizeof(MP_HEADER_FIELD_SIZE * FIELD_SIZE));
 	
-	uint16_t cu = fusion(code, uid);
+	uint16_t cu = fusion(mhd.rc, mhd.uuid);
 
 	hd->fields[MP_FIELD_CR_UUID] = htons(cu);
-	hd->fields[MP_FIELD_THREAD] = htons(nthread);
-	hd->fields[MP_FIELD_NUMBER] = htons(n);
-	hd->fields[MP_FIELD_DATALEN] = htons(datalen);
+	hd->fields[MP_FIELD_THREAD] = htons(mhd.nthread);
+	hd->fields[MP_FIELD_NUMBER] = htons(mhd.n);
+	hd->fields[MP_FIELD_DATALEN] = htons(mhd.len);
+}
+
+void melt_header(struct mp_header * mhd, const struct header * hd)
+{
+	memset(mhd, 0x0, sizeof(struct mp_header));
+
+	uint16_t lfield = ntohs(hd->fields[MP_FIELD_CR_UUID]);
+
+	mhd->rc = get_rq_code(lfield);
+	mhd->uuid = get_uuid(lfield);
+
+	mhd->nthread = ntohs(hd->fields[MP_FIELD_THREAD]);
+	mhd->n = ntohs(hd->fields[MP_FIELD_NUMBER]);
+	mhd->len = ntohs(hd->fields[MP_FIELD_DATALEN]);
 }
 
 uint16_t get_rq_code(uint16_t field)
@@ -49,7 +71,7 @@ request_code_t string_to_code(const char * str)
 	else if(!strcmp(str, "download"))
 		return DOWNLOAD;	
 
-	return UNKNOWN;
+	return 0;
 }
 
 uint16_t fusion(uint16_t u, uint16_t v)

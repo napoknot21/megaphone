@@ -7,9 +7,12 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <net/if.h>
 #include "../forge.h"
 #include "../protocol.h"
 #include "client.h"
+
+int if_index = 0;
 
 /*
  * This method manages to allocate the
@@ -54,70 +57,41 @@ int set_socket(int * sock, int domain, int protocol, const char * distant, uint1
 	else
 	{
 		printf("[-] An error occured while connecting by TCP/IP!\n");
+		close(*sock);
 	}
 
 	return status;
 }
 
-int link_udp_socket (int * sock, int domain, const char* sub_addr, uint16_t sub_port)
+int set_udp_socket (int * sock, const char* mc_addr, uint16_t mc_port)
 {
-	int ok = 1;
-  	if(setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &ok, sizeof(ok)) < 0) 
+	*sock = socket(AF_INET6, SOCK_DGRAM, 0);
+
+	struct sockaddr_in6 addr;
+	memset(&addr, 0x0, sizeof(addr));	
+	
+	addr.sin6_family = AF_INET6;
+  	addr.sin6_port = htons(mc_port);
+	
+	int status = bind(*sock, (struct sockaddr*) & addr, sizeof(struct sockaddr_in6));
+
+	struct ipv6_mreq group;
+	memset(&group, 0x0, sizeof(group));
+		
+	status &= inet_pton(AF_INET6, mc_addr, &group.ipv6mr_multiaddr.s6_addr);
+	group.ipv6mr_interface = if_index;
+
+	status &= setsockopt(*sock, IPPROTO_IPV6, IPV6_JOIN_GROUP, &group, sizeof(group));
+
+	if(!status)
 	{
-    	close(sock);
-    	return 1;
-  	}
-
-	struct sockaddr_in fil_sock;
-	memset(&fil_sock, 0x0, sizeof(fil_sock));
-
-	int ifindex = if_nametoindex ("eth0");
-
-	switch(domain)
-	{
-	case AF_INET:
-		fil_sock.sin_family = AF_INET;
-		fil_sock.sin_addr.s_addr = htonl(INADDR_ANY);
-		fil_sock.sin_port = htons(sub_port);
-		struct ip_mreqn fil;
-		memset(&fil, 0x0, sizeof(fil));
-		fil.imr_multiaddr.s_addr = inet_addr(sub_addr);
-		fil.imr_ifindex = ifindex;
-		if(setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &fil, sizeof(fil)) < 0) 
-		{
-    		close(sock);
-    		return 1;
-  		}
-
-		break;
-
-	case AF_INET6:
-		fil_sock.sin6_family = AF_INET6;
-  		fil_sock.sin6_addr = in6addr_any;
-  		fil_sock.sin6_port = htons(sub_port);
-		struct ipv6_mreq fil6;
-		memset(&fil, 0x0, sizeof(fil6));
-		inet_pton (AF_INET6, sub_addr, &fil6.ipv6mr_multiaddr.s6_addr);
-  		fil6.ipv6mr_interface = ifindex;
-		if(setsockopt(sock, IPPROTO_IPV6, IPV6_JOIN_GROUP, &fil6, sizeof(fil6)) < 0) 
-		{
-    		close(sock);
-    		return 1;
-  		}
-
-		break;
+    		close(*sock);	
 	}
 
-	if(bind(sock, (struct sockaddr*) &fil_sock, sizeof(fil_sock))) 
-	{
-    	close(sock);
-    	return 1;
-  	}
-
-	return 0;
+	return status;
 
 }
-
+/*
 fd_set * make_fd_set(struct host * cl, char** sub_addr, int nb_addr)
 {
 	fd_set rset;
@@ -166,7 +140,7 @@ int client_recv_dataflow(struct host * cl, char** sub_addr, int nb_addr)
 	return 0;
 	
 }
-
+*/
 /*
  * This method manages to send a packet
  * structure through TCP/IP layer. It gives
@@ -200,50 +174,6 @@ int client_send_dataflow(const struct host * cl, const struct packet * p, char *
 	} while(bytes);
 
 	return status;	
-}
-
-/* A séparer en plusieurs fonction TODO */
-
-/**
- * @brief Récupère l'adresse du serveur et s'y connecte.
- * @param hostname est le nom du serveur.
- * @param port est le numéro du port sur lequel se connecter depuis le client.
- * @param sock est la socket permettant de communiquer avec le serveur.
- * @param addr est l'adresse du serveur.
- * @param addrlen est la taille de l'adresse.
- * @return -1 si le serveur n'a pas été trouver, -2 si la socket ne s'est pas crée, 0 si tout c'est bien passé.
- */
-struct sockaddr_in6** get_server_addr(char* hostname, char* port, int * sock, struct sockaddr_in6** addr, int* addrlen) {
-    struct addrinfo hints;
-    struct addrinfo *r;
-    struct addrinfo *p;
-
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_INET6;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_V4MAPPED | AI_ALL;
-
-    if ((getaddrinfo(hostname, port, &hints, &r)) != 0 || r == NULL)
-	{
-        perror("addrinfo");
-        return -1;
-    }
-
-    *addrlen = sizeof(struct sockaddr_in6);
-	ssize_t nb_addr = 0;
-
-    p = r;
-    while( p != NULL ){
-        *(addr + nb_addr) = (struct sockaddr_in6 *) p->ai_addr;
-		nb_addr += 1;
-        p = p->ai_next;
-    }
-
-    if (p == NULL) return -2;
-
-    freeaddrinfo(r);
-    
-    return addr;
 }
 
 /*
@@ -289,10 +219,13 @@ void close_client(struct host * cl)
 {
 	close(cl->tcp_sock);
 	
-	for(size_t k = 0; k < cl->udp_sock_size; k++)
+	for(size_t k = 0; k < cl->udp_socks->size; k++)
 	{
-		close(cl->udp_sock[k]);
+		int * fd = (int *) at(cl->udp_socks, k);
+		close(*fd);
 	}
+
+	free_host(cl);
 }
 
 /*
@@ -302,14 +235,14 @@ void close_client(struct host * cl)
 
 void mp_shell()
 {
-	struct host cl;
-	memset(&cl, 0x0, sizeof(cl));
+	struct host * cl = make_host();
+	if_index = get_interface(AF_INET6, IFF_MULTICAST);	
 
 	/*
 	 * There we add TCP/IP socket
 	 */
 	
-	if(set_socket(&cl.tcp_sock, AF_INET, SOCK_STREAM, DEFAULT_BOOTSTRAP, MP_TCP_PORT))
+	if(set_socket(&cl->tcp_sock, AF_INET, SOCK_STREAM, DEFAULT_BOOTSTRAP, MP_TCP_PORT))
 	{
 		printf("[-] Error while initializing client!\n");
 		return;
@@ -333,12 +266,13 @@ void mp_shell()
 
 		request_code_t rc = string_to_code(argv[0]);
 		printf("[!] Request Code: %d\n", rc);
+
 		struct packet * p = mp_request_for(&se, rc, argc - 1, argv + 1);
-
 		char * rcv = malloc(MP_NET_BUFFER_SIZE);
-		client_send_dataflow(&cl, p, rcv);
 
-		mp_recv(&se, rc, rcv);
+		client_send_dataflow(cl, p, rcv);
+
+		mp_recv(&se, rcv);
 
 		free(p);
 		free(rcv);
@@ -352,7 +286,7 @@ void mp_shell()
 
 	} while(strcmp(data, "quit\n"));
 
-	close_client(&cl);
+	close_client(cl);	
 }
 
 int main(int argc, char ** argv) 
