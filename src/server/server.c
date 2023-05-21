@@ -12,7 +12,6 @@
 #include "server.h"
 #include "../client/megaphone.h"
 #include "../utils/string.h"
-#include "./megaphone.h"
 
 
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
@@ -202,7 +201,7 @@ void * handler_client (void * p_sock)
 
     string_push_back(data, "\0", 1);
 
-    //struct packet * back_packet = mp_process_data(data->data);
+    struct packet * back_packet = mp_process_data(data->data);
 
     free_string(data);
 
