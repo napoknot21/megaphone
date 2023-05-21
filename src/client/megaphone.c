@@ -42,7 +42,7 @@ struct packet * mp_upload_post(const struct session * se, struct post * pt, uint
 
 	struct mp_header mhd = {POST, se->uid, thread, 0, p->size};
 
-	fill_header(&p->header, mhd);
+	forge_header(MP_CLIENT_SIDE, &p->header, mhd);
 
 	return p;
 }
@@ -57,7 +57,7 @@ struct packet * mp_request_threads(const struct session * se, uint16_t thread, u
 	struct packet * p = make_packet();
 	struct mp_header mhd = {FETCH, se->uid, thread, n, 0};
 
-	fill_header(&p->header, mhd);
+	forge_header(MP_CLIENT_SIDE, &p->header, mhd);
 
 	return p;
 }
@@ -70,10 +70,32 @@ struct packet * mp_request_threads(const struct session * se, uint16_t thread, u
 
 struct packet * mp_subscribe(const struct session * se, uint16_t thread) 
 {
-	struct packet * p = malloc(sizeof(struct packet));
+	struct packet * p = make_packet();
 	struct mp_header mhd = {SUBSCRIBE, se->uid, thread, 0, 0};
 	
-	fill_header(&p->header, mhd);
+	forge_header(MP_CLIENT_SIDE, &p->header, mhd);
+
+	return p;
+}
+
+struct packet * mp_upload_file(const struct session * se, uint16_t thread, char * filename)
+{
+	struct packet * p = make_packet();
+	struct mp_header mhd = {UPLOAD_FILE, se->uid, thread, 0, strlen(filename)};
+
+	forge_header(MP_CLIENT_SIDE, &p->header, mhd);
+	p->data = filename;
+
+	return p;
+}
+
+struct packet * mp_download_file(const struct session * se, uint16_t thread, char * filename)
+{
+	struct packet * p = make_packet();
+	struct mp_header mhd = {DOWNLOAD_FILE, se->uid, thread, MP_UDP_PORT, strlen(filename)};
+
+	forge_header(MP_CLIENT_SIDE, &p->header, mhd);
+	p->data = filename;
 
 	return p;
 }
@@ -100,14 +122,15 @@ struct packet * mp_request_for(const struct session * se, const request_code_t r
 		if(argc <= 1)
 		{
 			printf("[!] Usage : post <thread> <message>");
+			break;
 		}
 
 		memmove(&thread, argv[0], 2);
 		struct post message_post = {MESSAGE, se->uid, argv[1]};
 
 		p = mp_upload_post(se, &message_post, thread);
-		break;
-	
+		break;	
+
 	case FETCH:
 		if(argc <= 1)
 		{
@@ -115,18 +138,39 @@ struct packet * mp_request_for(const struct session * se, const request_code_t r
 			return NULL;
 		}
 
-		memmove(&thread, &argv[0], 2);
+		memmove(&thread, argv[0], 2);
 		memmove(&n, argv[1], 2);
 
 		p = mp_request_threads(se, thread, n);
 		break;
 
 	case SUBSCRIBE:	
-		memmove(&thread, &argv[0], 2);
+		memmove(&thread, argv[0], 2);
 		p = mp_subscribe(se, thread);
 		break;
 	
-	case DOWNLOAD:
+	case UPLOAD_FILE: 
+		if(argc <= 1)
+		{
+			printf("[!] Usage : upload <thread> <filename>\n");
+			break;
+		}
+
+		memmove(&thread, argv[0], 2);
+		p = mp_upload_file(se, thread, argv[1]);
+
+		break;
+
+	case DOWNLOAD_FILE:
+		if(argc <= 1)
+		{
+			printf("[!] Usage : download <thread> <filename>\n");
+			break;
+		}
+
+		memmove(&thread, argv[0], 2);
+		p = mp_download_file(se, thread, argv[1]);
+
 		break;
 
 	default:
@@ -136,18 +180,40 @@ struct packet * mp_request_for(const struct session * se, const request_code_t r
 	return p;
 }
 
+void mp_recv_posts(int fd, uint16_t n)
+{
+	uint16_t thread;
+	char origin[10];
+	char pseudo[10];
+
+	char len;	
+
+	for(uint16_t k = 0; k < n; k++)
+	{
+		recv(fd, &thread, 2, 0);
+		recv(fd, origin, 10, 0);
+		recv(fd, pseudo, 10, 0);
+		recv(fd, &len, 1, 0);
+
+		char * data = malloc((size_t) len);
+
+		recv(fd, data, (size_t) len, 0);
+		printf("[i][%d] %s -> %s\n%s\n", thread, origin, pseudo, data);
+	}
+}
+
 /*
  * This function manages the receive data
  * from the server, depending on the request
  * code.
  */
 
-int mp_recv(struct session * se, const char * data)
+int mp_recv(const struct host * cl, struct session * se, const char * data)
 {
 	struct packet * p = melt_tcp_packet(data);
 	struct mp_header mhd;
 
-	melt_header(&mhd, &p->header);
+	melt_header(MP_SERVER_SIDE, &mhd, &p->header);
 
 	switch(mhd.rc)
 	{
@@ -161,14 +227,12 @@ int mp_recv(struct session * se, const char * data)
 		break;
 
 	case FETCH:
-		printf("[i] %d post(s) fetched!\n%s\n", mhd.n, p->data);
+		printf("[i] %d post(s) fetched!\n", mhd.n);
+		mp_recv_posts(cl->tcp_sock, mhd.n);
 		break;
 
 	case SUBSCRIBE:
 		printf("[i] You successfully subscribed to %d thread!\n", mhd.nthread);
-		break;
-
-	case DOWNLOAD:
 		break;
 
 	default:

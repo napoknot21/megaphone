@@ -147,7 +147,7 @@ int client_recv_dataflow(struct host * cl, char** sub_addr, int nb_addr)
  * back the raw received data.
  */
 
-int client_send_dataflow(const struct host * cl, const struct packet * p, char * rcv)
+int client_send_dataflow(const struct host * cl, const struct packet * p, char ** rcv)
 {
 	const char * data = forge_tcp_packet(p);
 	int status = send(cl->tcp_sock, data, strlen(data), 0);	
@@ -156,24 +156,30 @@ int client_send_dataflow(const struct host * cl, const struct packet * p, char *
 	{
 		printf("[-] An error occured while sending packet!\n");
 		return status;
+	}	
+
+	uint16_t lfield;
+	recv(cl->tcp_sock, &lfield, FIELD_SIZE, 0);
+
+	lfield = ntohs(lfield);
+	uint16_t rc = get_rq_code(lfield);
+	
+	size_t size;
+
+	if(rc == SUBSCRIBE)
+	{
+		size = FIELD_SIZE * MP_HEADER_FIELD_SIZE;		
+	}
+	else
+	{
+		size = FIELD_SIZE * (MP_HEADER_FIELD_SIZE - 1);	
 	}
 
-	ssize_t bytes, size = 0;
-	ssize_t reserve = MP_NET_BUFFER_SIZE;
+	*rcv = malloc(size);
+	memmove(*rcv, &lfield, FIELD_SIZE);
+	size_t bytes = recv(cl->tcp_sock, *rcv + FIELD_SIZE, size, 0);
 
-	do {
-		if(size >= reserve)
-		{
-			reserve += MP_NET_BUFFER_SIZE;
-			rcv = realloc(rcv, reserve);
-		}
-
-		bytes = recv(cl->tcp_sock, rcv, MP_NET_BUFFER_SIZE, 0);
-		size += bytes;
-
-	} while(bytes);
-
-	return status;	
+	return bytes;	
 }
 
 /*
@@ -268,13 +274,14 @@ void mp_shell()
 		printf("[!] Request Code: %d\n", rc);
 
 		struct packet * p = mp_request_for(&se, rc, argc - 1, argv + 1);
-		char * rcv = malloc(MP_NET_BUFFER_SIZE);
+		char ** rcv = malloc(sizeof(char*));
 
 		client_send_dataflow(cl, p, rcv);
 
-		mp_recv(&se, rcv);
+		mp_recv(cl, &se, *rcv);
 
 		free(p);
+		free(*rcv);
 		free(rcv);
 
 		for(size_t k = 0; k < argc; k++)

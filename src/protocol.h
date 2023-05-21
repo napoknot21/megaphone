@@ -9,6 +9,9 @@
 #define LAYER_TCP 		0
 #define LAYER_UDP 		1
 
+#define MP_CLIENT_SIDE		0
+#define MP_SERVER_SIDE		1
+
 #define REQUEST_CODE_SIZE_BITS 	5
 #define USER_ID_SIZE_BITS 	11
 #define REQUEST_CODE_MASK 	0xF800
@@ -34,7 +37,8 @@ typedef enum request_code
     POST,
     FETCH,
     SUBSCRIBE, 
-    DOWNLOAD
+    UPLOAD_FILE,
+    DOWNLOAD_FILE
 } request_code_t;
 
 request_code_t string_to_code(const char * str);
@@ -107,8 +111,8 @@ struct mp_header
 void mp_init();
 void mp_close();
 
-void fill_header(struct header*, const struct mp_header);
-void melt_header(struct mp_header*, const struct header*);
+void forge_header(int, struct header*, const struct mp_header);
+void melt_header(int, struct mp_header*, const struct header*);
 
 struct packet * melt_tcp_packet(const char*);
 

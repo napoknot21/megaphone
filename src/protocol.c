@@ -21,20 +21,26 @@ void free_host(struct host * h)
 	free(h);
 }
 
-void fill_header(struct header * hd, const struct mp_header mhd)
+void forge_header(int side, struct header * hd, const struct mp_header mhd)
 {
 	memset(hd, 0x0, sizeof(struct header));
-	hd->fields = malloc(sizeof(MP_HEADER_FIELD_SIZE * FIELD_SIZE));
+
+	size_t fs = MP_HEADER_FIELD_SIZE * FIELD_SIZE;
+	hd->fields = malloc(!side ? fs : fs - 1);
 	
 	uint16_t cu = fusion(mhd.rc, mhd.uuid);
 
 	hd->fields[MP_FIELD_CR_UUID] = htons(cu);
 	hd->fields[MP_FIELD_THREAD] = htons(mhd.nthread);
 	hd->fields[MP_FIELD_NUMBER] = htons(mhd.n);
-	hd->fields[MP_FIELD_DATALEN] = htons(mhd.len);
+	
+	if(side == MP_CLIENT_SIDE)
+	{
+		hd->fields[MP_FIELD_DATALEN] = htons(mhd.len);
+	}
 }
 
-void melt_header(struct mp_header * mhd, const struct header * hd)
+void melt_header(int side, struct mp_header * mhd, const struct header * hd)
 {
 	memset(mhd, 0x0, sizeof(struct mp_header));
 
@@ -45,7 +51,11 @@ void melt_header(struct mp_header * mhd, const struct header * hd)
 
 	mhd->nthread = ntohs(hd->fields[MP_FIELD_THREAD]);
 	mhd->n = ntohs(hd->fields[MP_FIELD_NUMBER]);
-	mhd->len = ntohs(hd->fields[MP_FIELD_DATALEN]);
+
+	if(side == MP_CLIENT_SIDE)
+	{
+		mhd->len = ntohs(hd->fields[MP_FIELD_DATALEN]);
+	}
 }
 
 uint16_t get_rq_code(uint16_t field)
@@ -68,8 +78,10 @@ request_code_t string_to_code(const char * str)
 		return FETCH;
 	else if(!strcmp(str, "subscribe"))
 		return SUBSCRIBE;
+	else if(!strcmp(str, "upload"))
+		return UPLOAD_FILE;
 	else if(!strcmp(str, "download"))
-		return DOWNLOAD;	
+		return DOWNLOAD_FILE;	
 
 	return 0;
 }
@@ -94,7 +106,7 @@ struct packet * melt_tcp_packet(const char * bytes)
     lfield = ntohs(lfield);
     uint16_t code = get_rq_code(lfield);
 
-    if(code > DOWNLOAD)
+    if(code > DOWNLOAD_FILE)
     {
         free_packet(p);
         printf("[packet] received data is corrupted!\n");

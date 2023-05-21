@@ -183,7 +183,9 @@ struct packet * mp_process_data(const char * data)
         send_p = mp_subscribe(se, recv_p->header.fields[0]);
         break;
 
-    case DOWNLOAD: break;
+    case UPLOAD_FILE: break;
+
+    case DOWNLOAD_FILE: break;
 
     default:
 	printf("[-] This request code is unknown!\n");
