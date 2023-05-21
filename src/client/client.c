@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <net/if.h>
+#include <pthread.h>
 #include "../forge.h"
 #include "../protocol.h"
 #include "client.h"
@@ -91,39 +92,25 @@ int set_udp_socket (int * sock, const char* mc_addr, uint16_t mc_port)
 	return status;
 
 }
-/*
-fd_set * make_fd_set(struct host * cl, char** sub_addr, int nb_addr)
+
+fd_set * make_fd_set(struct host * cl)
 {
 	fd_set rset;
 	FD_ZERO(&rset);
 
-	for (int i = 0; i < nb_addr; i++)
+	for (int i = 0; i < cl->udp_socks->size; i++)
 	{
-		if(set_socket((cl->udp_sock)[i], AF_INET, SOCK_DGRAM, DEFAULT_BOOTSTRAP, MP_UDP_PORT))
-		{
-			printf("[-] Error while initializing udp socket !\n");
-			return -1;
-		}
-
-		link_udp_socket ((cl->udp_sock)[i], AF_INET, sub_addr[i], MP_UDP_PORT);
-
-		cl->udp_sock_size += sizeof((cl->udp_sock)[i]);
-		
-		FD_SET(cl->udp_sock[i], &rset);
-
+		FD_SET((cl->udp_socks->data)[i], &rset);
 	}
 
 	return &rset;
-
 }
 
-int client_recv_dataflow(struct host * cl, char** sub_addr, int nb_addr) 
+int client_recv_dataflow(struct host * cl) 
 {
-	fd_set * rset = make_fd_set(cl,sub_addr,nb_addr);
-
-	ssize_t size = 0;
-	while(size < (cl->udp_sock_size))
+	while(1)
 	{
+		fd_set * rset = make_fd_set(cl);
 		char buf[MP_UDP_BLOCK_SIZE];
 		memset(buf, 0x0, sizeof(buf));
 		
@@ -134,13 +121,26 @@ int client_recv_dataflow(struct host * cl, char** sub_addr, int nb_addr)
 		int to_read = select(max(rset)+1, rset, NULL, 0, t);
 		recv(to_read, buf, strlen(buf), 0);
 		printf(buf);
-		size += sizeof((cl->udp_sock)[size]);
+		free(rset);
 	}
 
 	return 0;
 	
 }
-*/
+
+int communication_udp(struct host * cl) 
+{
+	pthread_t thread;
+	if (pthread_create(&thread, NULL, client_recv_dataflow, cl) == -1)
+	{
+		perror("pthread_create");
+		return -1;
+	}
+	pthread_join(thread,NULL);
+	close_client(cl);
+	return 0;
+}
+
 /*
  * This method manages to send a packet
  * structure through TCP/IP layer. It gives
