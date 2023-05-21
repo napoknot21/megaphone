@@ -86,7 +86,7 @@ unsigned get_interface(int domain, int flags)
 		index = if_nametoindex(if_name);
 		if(index) 
 		{
-			printf("[i] Network interface found!\n");
+			printf("[i] \"%s\" interface seems to fit!\n", i->ifa_name);
 			break;
 		}
 	}

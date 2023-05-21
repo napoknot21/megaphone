@@ -251,8 +251,6 @@ void mp_shell()
 	struct host * cl = make_host();
 	if_index = get_interface(AF_INET6, IFF_MULTICAST);	
 
-	printf("[i] Multicast interface found %d\n", if_index);
-
 	/*
 	 * There we add TCP/IP socket
 	 */

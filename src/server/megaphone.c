@@ -26,6 +26,31 @@ uid_t gen_id()
 	return i + 1 < pow(2, 11) ? ++i : 0;
 }
 
+struct in6_addr gen_multicast_addr()
+{
+	struct in6_addr addr;
+
+	if(!mp_threads->size)
+	{
+		inet_pton(AF_INET6, "ff12::0", &addr);
+	}
+	else
+	{
+		struct thread * th = at(mp_threads, mp_threads->size - 1);
+		addr = th->addr;
+
+		addr.s6_addr[0] = (addr.s6_addr[0] + 1) % 0x10000;
+	}
+
+	char str[INET6_ADDRSTRLEN];
+	memset(str, 0x0, INET6_ADDRSTRLEN);
+
+	inet_ntop(AF_INET6, &addr, str, INET6_ADDRSTRLEN);
+	printf("[i] ");
+
+	return addr;
+}
+
 void mp_init()
 {
 	sessions = make_vector(
@@ -100,7 +125,7 @@ struct packet * mp_upload_post(const struct session * se, struct post * pt, uint
 		memset(&th, 0x0, sizeof(th));
 
 		th.seed = se->uid;
-	//	th.addr = gen_multicast_addr();
+		th.addr = gen_multicast_addr();
 		th.posts = make_vector(
 				(void* (*)(void*)) copy_post, 
 				(void (*)(void*)) free_post, 
