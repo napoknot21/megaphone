@@ -11,6 +11,7 @@
 #define MAX_CLIENTS 10
 
 #define LOCAL_ADDR "127.0.0.1"
+#define NOTIFICATION_INTERVAL 10
 
 typedef struct sockaddr_in SA_IN;
 
@@ -75,6 +76,13 @@ void * handler_client (void *p_client_socket);
  * @param sock : the socket to be removed
  */
 void remove_client (int *sock);
+
+
+/**
+ * @brief: Send a notification the client
+ * @param arg : the socket 
+ */
+ void * send_notifications(void *arg);
 
 
 /**

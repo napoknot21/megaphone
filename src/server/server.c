@@ -48,7 +48,7 @@ int create_socket (int *sock, int domain, int protocol, const char * distant, ui
 
     memmove(serv_addr.sa_data, &nport, 2);
 
-    if (protocol == SOCK_STREAM) return 0;
+    if (protocol == SOCK_DGRAM) return 0;
 
     int statusBind = bind (*sock, (struct sockaddr *) &serv_addr, sockaddr_size);
 
@@ -230,6 +230,18 @@ int accept_tcp_connection (struct host *serv)
 }
 
 
+
+void * send_notifications(void *arg)
+{
+    while (1) {
+        sleep(NOTIFICATION_INTERVAL); // Sleep pour une période determinée
+        // TODO: send les notifications
+    }
+    return NULL;
+}
+
+
+
 void run () 
 {
     
@@ -257,6 +269,17 @@ void run ()
         }
 
         printf("[*] New connection from %s:%d\n", inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port));
+
+        /*
+        // Start the notification thread
+        pthread_t notification_thread;
+        if (pthread_create(&notification_thread, NULL, send_notifications, NULL) != 0) {
+            perror("[!] pthread_create failed...\n");
+            exit(EXIT_FAILURE);
+        }
+        pthread_detach(notification_thread);
+        
+        */
 
         pthread_mutex_lock(&lock);
 
