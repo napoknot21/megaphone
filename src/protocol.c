@@ -206,6 +206,20 @@ void free_session(struct session * se)
 
 void print_post(const struct post * pt)
 {	
+	printf("New post from user %d\n\n", pt->uuid);
+	printf("%s", pt->data);
+}
+
+void help()
+{
+	printf("Possible command : \n\n");
+	printf("	- Use : signup pseudo, to resgister you as pseudo \n");
+	printf("	- Use : post f message, to post a message on the thread f\n");
+	printf("	- Use : fetch f n, to get n first message of thread f: \n");
+	printf("	- Use : subscribe f, to subscribe to the thread f: \n");
+	printf("	- Use : upload f file, to upload file on the thread f: \n");
+	printf("	- Use : download f file, to download file from the thread f: \n");
+
 }
 
 void forge_udp_header(struct header * hd, const struct mp_udp_header muh)

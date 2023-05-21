@@ -133,6 +133,9 @@ void melt_post_header(struct mp_post_header*, const struct header*);
 
 struct packet * melt_tcp_packet(const char*);
 
+void print_post(const struct post * pt);
+void help();
+
 uint16_t get_rq_code(uint16_t);
 uid_t get_uuid(uint16_t);
 

@@ -142,7 +142,6 @@ int communication_udp(struct host * cl)
 		return -1;
 	}
 	pthread_join(thread,NULL);
-	close_client(cl);
 	return 0;
 }
 
