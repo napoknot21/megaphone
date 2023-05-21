@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "../protocol.h"
+#include "megaphone.h"
 
 #define BUFF_SIZE 4096 //tmp value
 #define MAX_CLIENTS 10
