@@ -8,7 +8,7 @@
 uint16_t i = 0;
 
 struct vector * sessions;
-struct vector * threads;
+struct vector * mp_threads;
 
 struct session * get_session(const uid_t uuid)
 {
@@ -34,7 +34,7 @@ void mp_init()
 		sizeof(struct session)
 	);
 
-	threads = make_vector(
+	mp_threads = make_vector(
 		(void* (*)(void*)) copy_thread,
 		(void (*)(void*)) free_session,
 		sizeof(struct session)
@@ -45,7 +45,7 @@ void mp_init()
 void mp_close()
 {
 	free_vector(sessions);
-	free_vector(threads);
+	free_vector(mp_threads);
 }
 
 struct packet * mp_signup(char * username)
@@ -75,7 +75,7 @@ struct packet * mp_upload_post(const struct session * se, struct post * pt, uint
 {
 	struct packet * p = make_packet();
 
-	if(thread < threads->size)
+	if(thread < mp_threads->size)
 	{
 		/*
 		 * The thread already exists,
@@ -83,7 +83,7 @@ struct packet * mp_upload_post(const struct session * se, struct post * pt, uint
 		 * post on it.
 		 */
 
-		struct thread * th = at(threads, thread);
+		struct thread * th = at(mp_threads, thread);
 		push_back(th->posts, pt);
 	
 		printf("[i] New post has been uploaded on thread %d!\n", thread);
@@ -108,9 +108,9 @@ struct packet * mp_upload_post(const struct session * se, struct post * pt, uint
 		);
 
 		push_back(th.posts, pt);
-		push_back(threads, &th);
+		push_back(mp_threads, &th);
 
-		printf("[i] Thread %ld has been created!\n", threads->size);
+		printf("[i] Thread %ld has been created!\n", mp_threads->size);
 	}
 
 	return p;
@@ -118,19 +118,58 @@ struct packet * mp_upload_post(const struct session * se, struct post * pt, uint
 
 struct packet * mp_request_threads(const struct session * se, uint16_t thread, uint16_t n)
 {
-	struct packet * p;
+	struct packet * p = NULL;
+	size_t size = 0;
 
-	if(thread < threads->size)
+	size_t bth = !thread ? 0 : thread - 1;
+	size_t sth = !thread ? mp_threads->size : 1;
+
+	if(!thread)
+	{	
+		for(size_t k = 0; k < sth; k++)
+		{
+			struct thread * th = at(mp_threads, k);
+			size_t ps = th->posts->size;
+		
+			size += n <= ps ? n : ps;
+		}
+	}
+	else if(thread - 1 < mp_threads->size)
 	{
-		struct thread * th = at(threads, thread);
+		struct thread * th = at(mp_threads, thread - 1);
+		size_t ps = th->posts->size;
+			
+		size = n <= ps ? n : ps;
+	}
+	else
+	{
+		bth = sth = 0;
+	}
+
+	p = malloc((size + 1) * sizeof(struct packet));	
+	memset(p, 0x0, (size + 1) * sizeof(struct packet));
+
+	struct mp_header mhd = {FETCH, se->uid, !thread ? sth : thread, thread || !n ? size : n, 0};
+	forge_header(MP_SERVER_SIDE, &p[0].header, mhd);
+
+	for(uint16_t i = bth; i < bth + sth; i++)
+	{
+		struct thread * th = at(mp_threads, i);
 		
 		size_t ps = th->posts->size;
 		size_t beg = n <= ps ? ps - n : 0;
 
 		for(size_t k = beg; k < ps; k++)
 		{
-			struct post * pt = at(th->posts, k);
+			struct post * post = at(th->posts, k);
+			struct mp_post_header mph;
 
+			memset(&mph, 0x0, sizeof(mph));
+
+			mph.nthread = i + 1;
+			memmove(mph.origin, &th->seed, 2);
+			memmove(mph.pseudo, &post->uuid, 2);
+			mph.len = strlen(post->data);
 		}
 	}
 

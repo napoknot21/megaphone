@@ -58,6 +58,18 @@ void melt_header(int side, struct mp_header * mhd, const struct header * hd)
 	}
 }
 
+void forge_post_header(struct header * hd, const struct mp_post_header mph)
+{
+	memset(hd, 0x0, sizeof(struct header));
+
+	hd->fields = malloc(12 * FIELD_SIZE);
+
+	hd->fields[0] = mph.nthread;
+	memmove(hd->fields + 1, mph.origin, 10);
+	memmove(hd->fields + 6, mph.pseudo, 10);
+	hd->fields[11] = mph.len;
+}
+
 uint16_t get_rq_code(uint16_t field)
 {
 	return (field & REQUEST_CODE_MASK) >> USER_ID_SIZE_BITS;

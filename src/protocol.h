@@ -108,11 +108,22 @@ struct mp_header
 	uint16_t len;
 };
 
+struct mp_post_header
+{
+	uint16_t nthread;
+	char origin[10];
+	char pseudo[10];
+	uint16_t len;
+};
+
 void mp_init();
 void mp_close();
 
 void forge_header(int, struct header*, const struct mp_header);
 void melt_header(int, struct mp_header*, const struct header*);
+
+void forge_post_header(struct header*, const struct mp_post_header);
+void melt_post_header(struct mp_post_header*, const struct header*);
 
 struct packet * melt_tcp_packet(const char*);
 
