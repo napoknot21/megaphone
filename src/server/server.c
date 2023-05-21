@@ -199,7 +199,8 @@ void * handler_client (void * p_sock)
 
     string_push_back(data, "\0", 1);
 
-    struct packet * back_packet = mp_process_data(data->data);
+    size_t packet_len = 1;
+    struct packet * back_packet = mp_process_data(data->data, &packet_len);
 
     free_string(data);
 

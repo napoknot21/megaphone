@@ -26,8 +26,10 @@ void forge_header(int side, struct header * hd, const struct mp_header mhd)
 	memset(hd, 0x0, sizeof(struct header));
 
 	size_t fs = MP_HEADER_FIELD_SIZE * FIELD_SIZE;
-	hd->fields = malloc(!side ? fs : fs - 1);
-	
+
+	hd->fields = malloc(!side ? fs : fs - FIELD_SIZE);
+	hd->size = MP_HEADER_FIELD_SIZE;
+
 	uint16_t cu = fusion(mhd.rc, mhd.uuid);
 
 	hd->fields[MP_FIELD_CR_UUID] = htons(cu);
@@ -37,6 +39,7 @@ void forge_header(int side, struct header * hd, const struct mp_header mhd)
 	if(side == MP_CLIENT_SIDE)
 	{
 		hd->fields[MP_FIELD_DATALEN] = htons(mhd.len);
+		hd->size--;
 	}
 }
 
@@ -201,6 +204,76 @@ void free_session(struct session * se)
 }
 
 void print_post(const struct post * pt)
+{	
+}
+
+void forge_udp_header(struct header * hd, const struct mp_udp_header muh)
 {
+	memset(hd, 0x0, sizeof(struct header));
+
+	hd->size = 2;
+	hd->fields = malloc(hd->size * FIELD_SIZE);	
+
+	hd->fields[0] = htons(fusion(muh.rc, muh.uuid));
+	hd->fields[1] = htons(muh.n);
+}
+
+void melt_udp_header(struct mp_udp_header * muh, const struct header * hd)
+{
+	memset(muh, 0x0, sizeof(struct mp_udp_header));
+
+	uint16_t lfield = ntohs(hd->fields[MP_FIELD_CR_UUID]);
+
+	muh->rc = get_rq_code(lfield);
+	muh->uuid = get_uuid(lfield);
+	muh->n = ntohs(hd->fields[MP_FIELD_THREAD]);
+}
+
+/*
+ * This function manages to
+ * create a chain of packets
+ * chunked by 512 bytes each.
+ */
+
+struct packet * chunk_data(struct mp_udp_header muh, const char * data, size_t * len)
+{
+	size_t ds = strlen(data);
+	*len = ds / UDP_BLOCK_SIZE + 1;
+
+	struct packet * packets = malloc(*len * sizeof(struct packet));
+	memset(packets, 0x0, *len * sizeof(struct packet));
+
+	size_t offset = 0;	
+	size_t data_size = UDP_BLOCK_SIZE - 4;
+
+	for(size_t i = 0; i < *len; i++)
+	{	
+		forge_udp_header(&packets[i].header, muh);
 	
+		packets[i].header.fields[1] = i;
+		memmove(packets[i].data, data + offset, data_size);
+
+		offset += data_size;
+	}
+
+	return packets;
+}
+
+/*
+ * This function manages to merge
+ * packet' data in the correct order.
+ */
+
+char * unchunk_data(struct packet * p, size_t len)
+{
+	char * data = malloc(len * (UDP_BLOCK_SIZE - 4));	
+	struct mp_udp_header muh;	
+
+	for(size_t i = 0; i < len; i++)
+	{
+		melt_udp_header(&muh, &p[i].header);
+		memmove(data + muh.n * UDP_BLOCK_SIZE, p[i].data, UDP_BLOCK_SIZE - 4);
+	}
+
+	return data;
 }

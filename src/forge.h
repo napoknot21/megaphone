@@ -32,7 +32,7 @@ const char * forge_tcp_packet(const struct packet*);
 
 unsigned get_interface(int, int);
 
-size_t send_udp(struct sockaddr_in6, char*);
-size_t recv_udp(struct sockaddr_in6, char*);
+size_t send_udp(int, struct sockaddr_in6, char*);
+size_t recv_udp(int, struct sockaddr_in6, char*);
 
 #endif

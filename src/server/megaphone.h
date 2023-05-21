@@ -9,6 +9,6 @@
 struct session * get_session(const uid_t);
 struct packet * mp_process_data(const char*, size_t*);
 
-struct packet * mp_process_data(const char * data);
+struct packet * mp_process_data(const char * data, size_t*);
 
 #endif

@@ -115,6 +115,13 @@ struct mp_post_header
 	uint16_t len;
 };
 
+struct mp_udp_header
+{
+	uint16_t rc;
+	uid_t uuid;
+	uint16_t n;
+};
+
 void mp_init();
 void mp_close();
 
