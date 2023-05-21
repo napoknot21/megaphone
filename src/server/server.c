@@ -20,83 +20,10 @@ pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_t threads[MAX_CLIENTS];
 int handlers = 0;
 
-/*
-void remove_client(int cli_sock) 
+
+int create_socket (struct host *serv, int domain, int protocol, const char * distant, uint16_t port) 
 {
-    pthread_mutex_lock(&lock);
-
-    int i;
-    for (i = 0; i < handlers; i++) {
-        if (threads[i] == cli_sock) {
-            break;
-        }
-    }
-
-    if (i == handlers) {
-        fprintf(stderr, "[!] Client socket %d not found...\n", cli_sock);
-        pthread_mutex_unlock(&lock);
-        return;
-    }
-
-    handlers--;
-    
-    while (i < handlers) {
-        threads[i] = threads[i + 1];
-        i++;
-    }
-    
-    pthread_mutex_unlock(&lock);
-    close_socket(cli_sock);
-}
-
-
-void * handler_client (void * p_sock) 
-{
-    int sock;
-    memmove(&sock, p_sock, sizeof(int));
-
-    char block[TCP_BYTE_BLOCK_SIZE];
-    memset(block, 0x0, TCP_BYTE_BLOCK_SIZE);
-    
-    struct string * data = make_string();
-    ssize_t length;
-
-    while ((length = recv(sock, block, TCP_BYTE_BLOCK_SIZE, 0)) > 0) 
-    {
-	string_push_back(data, block, length);
-	if(length < TCP_BYTE_BLOCK_SIZE)
-	{
-		break;
-	}
-    }
-
-    string_push_back(data, "\0", 1);
-
-    struct packet * back_packet = mp_process_data(data->data);
-
-    free_string(data);
-
-    remove_client(sock);
-    pthread_exit(NULL);
-}
-*/
-
-/**
- * @brief: Initialize the socket connection in TCP/UDP mode
- * @param sock : the socket pointer 
- * @param domain : the host domain (AF_INET, AF_INET6, etc...)
- * @param protocol : The type of connection (UDP => SOCK_DGRAM or TCP => SOCK_STREAM)
- * @param distant : string with the IP address
- * @param port : port number
- */
-int create_socket (int *sock, int domain, int protocol, const char * distant, uint16_t port) 
-{
-    *sock = socket (domain, protocol, 0); 
-
-    if (*sock < 0) {
-        fprintf("[!] An error occurred creating socket...\n");
-        exit(EXIT_FAILURE);
-    }
+    int sock = socket (domain, protocol, 0);
 
     struct sockaddr serv_addr;
     memset(&serv_addr, 0x00, sizeof(serv_addr));
@@ -122,17 +49,24 @@ int create_socket (int *sock, int domain, int protocol, const char * distant, ui
 
     memmove(serv_addr.sa_data, &nport, 2);
 
-    int statusBind = bind (*sock, (struct sockaddr *) &serv_addr, sockaddr_size);
+    int statusBind = bind (sock, (struct sockaddr *) &serv_addr, sockaddr_size);
 
     if (statusBind < 0) {
+
         printf("[!] Error binding...\n");
-        close(*sock);
-        exit(EXIT_FAILURE);
+        close(sock);
+        return statusBind;
+    
     }
 
-    if (protocol == SOCK_STREAM) return 0;
+    if (protocol == SOCK_STREAM) {
 
-    int status = listen (*sock, 0);
+        push_back(serv->udp_socks, &sock);
+        return sock;
+
+    }
+
+    int status = listen (sock, 0);
 
     if (!status) {
         printf("[*] Server listening at %s:%d...\n", distant, port);
@@ -140,33 +74,110 @@ int create_socket (int *sock, int domain, int protocol, const char * distant, ui
         printf("[*] An error occurred during listening by TCP/IP...\n");
     }
 
+    serv->tcp_sock = sock;
+
     return status;
 
 }
 
-/*
 
-int create_udp_sockets (struct host *serv, size_t size, int domain) 
+
+void remove_client (struct host *cl)
 {
-    serv->udp_sock = malloc (sizeof(int) * size);
-    serv->udp_sock_size = size;
+    pthread_mutex_lock(&lock);
 
-    for (size_t i = 0; i < size; ++i) {
-
-        server->udp_sock[i] = socket(domain, SOCK_DGRAM, 0);
-        
-        if (server->udp_sock[i] < 0) {
-            perror("[!] UDP socket error...\n");
-            return 1;
+    int i;
+    for (i = 0; i < handlers; i++) {
+        if (threads[i] == cl->tcp_sock) {
+            break;
         }
-    
     }
 
-    return 0;
+    if (i == handlers) {
+        fprintf(stderr, "[!] Client socket %d not found...\n", cl->tcp_sock);
+        pthread_mutex_unlock(&lock);
+        return;
+    }
+
+    handlers--;
+    
+    while (i < handlers) {
+        threads[i] = threads[i + 1];
+        i++;
+    }
+    
+    pthread_mutex_unlock(&lock);
+    close_socket(cl);
 }
 
 
-int join_multicast_group(int sock, char* group_address) 
+void * handler_client (void * p_sock) 
+{
+    int sock;
+    memmove(&sock, p_sock, sizeof(int));
+
+    char block[TCP_BYTE_BLOCK_SIZE];
+    memset(block, 0x0, TCP_BYTE_BLOCK_SIZE);
+    
+    struct string * data = make_string();
+    ssize_t length;
+
+    while ((length = recv(sock, block, TCP_BYTE_BLOCK_SIZE, 0)) > 0) 
+    {
+	    string_push_back(data, block, length);
+	    if(length < TCP_BYTE_BLOCK_SIZE)
+	    {
+		    break;
+	    }
+    }
+
+    string_push_back(data, "\0", 1);
+
+    struct packet * back_packet = mp_process_data(data->data);
+
+    free_string(data);
+
+    remove_client(sock);
+    pthread_exit(NULL);
+}
+
+
+void multicast_udp_socket(struct host* serv, int domain, const char* multicast_ip, uint16_t port)
+{
+    int udp_sock = create_socket(serv, domain, SOCK_DGRAM, multicast_ip, port);
+
+    if (udp_sock < 0) {
+        perror("[!] create_socket failed...");
+        exit(1);
+    }
+
+    // Enable SO_REUSEADDR to allow multiple instances of this application to receive copies of the multicast datagrams.
+    int reuse = 1;
+    if (setsockopt(udp_sock, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) < 0) {
+        perror("Setting SO_REUSEADDR error");
+        close(udp_sock);
+        exit(1);
+    }
+
+    // Join the multicast group from which to receive datagrams.
+    struct ip_mreq group;
+    group.imr_multiaddr.s_addr = inet_addr(multicast_ip);
+    group.imr_interface.s_addr = htonl(INADDR_ANY);
+
+    if (setsockopt(udp_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&group, sizeof(group)) < 0) {
+        perror("Adding multicast group error");
+        close(udp_sock);
+        exit(1);
+    }
+}
+
+
+/**
+ * @brief Connect a client to the multicast groupe
+ * @param cl : The client struct to connect
+ * @param group_address : The address for the multicast group
+ */ /*
+int join_multicast_group(struct host *cl, char* group_address) 
 {
     struct ip_mreqn mreq;
 
@@ -174,45 +185,43 @@ int join_multicast_group(int sock, char* group_address)
     mreq.imr_multiaddr.s_addr = inet_addr(group_address); 
     mreq.imr_address.s_addr = htonl(INADDR_ANY);
 
-    if (setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (void*)&mreq, sizeof(mreq)) < 0) {
-        perror("Adding multicast group error");
-        return 1;
+    int status = setsockopt(*cl->udp_socks, IPPROTO_IP, IP_ADD_MEMBERSHIP, (void*)&mreq, sizeof(mreq));
+    
+    if (!status) {
+
+        printf("[*] Adding multicast group error !\n");
+    
+    } else {
+
+        printf("[!] An error has occurred while trying to add multicast group...\n"); 
+
     }
 
     return 0;
-}
+}*/
 
 
-
-
-int accept_client (*sock_serv, struct host *cl) 
+int accept_tcp_connection (struct host *serv) 
 {
-    socklen_t peer_addr_size = sizeof(cl);
+    struct sockaddr_in client_address;
 
-    &
-           cfd = accept(sfd, (struct sockaddr *) &peer_addr,
-                        &peer_addr_size);
-    int status = accept ()
-}
+    memset(&client_address, 0x00, sizeof(client_address));
+    socklen_t addr_len = sizeof(client_address);
 
-
-void bind_socket_to_port(int sock, uint16_t port) {
-    struct sockaddr_in server_address;
-
-    memset(&server_address, 0, sizeof(server_address));
-    server_address.sin_family = AF_INET;
-    server_address.sin_port = htons(port);
-    server_address.sin_addr.s_addr = htonl(INADDR_ANY);
-
-    if (bind(sock, (struct sockaddr *)&server_address, sizeof(server_address)) < 0) {
-        perror("Bind error");
+    int client_sock = accept(serv->tcp_sock, (struct sockaddr*)&client_address, &addr_len);
+    
+    if (client_sock < 0) {
+        perror("Accept error");
         exit(1);
     }
+
+    return client_sock;
 }
 
 
 void run_server () 
 {
+    /*
     struct host serv;
     memset(&serv, 0x00, sizeof(serv));
 
@@ -254,10 +263,31 @@ void run_server ()
         pthread_mutex_unlock(&lock);
 
     }
+    */
 }
 
 
-*/
+void close_udp_sockets(struct host* serv) 
+{
+    for (size_t i = 0; i < serv->udp_socks->size; i++) {
+        
+        int* udp_sock = at(serv->udp_socks, i);
+        close(*udp_sock);
+    
+    }
+
+    clear(serv->udp_socks);
+}
+
+
+void close_tcp_socket (struct host *serv)
+{
+    close(serv->tcp_sock);
+
+}
+
+
+
 int main (int argc, char **argv) 
 {
     //run_server();
