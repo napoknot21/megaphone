@@ -60,6 +60,7 @@ void free_packet(struct packet * p)
 unsigned get_interface(int domain, int flags)
 {
 	struct ifaddrs * ifa;
+	printf("[i] Looking for a fitting network interface ...\n");
 
 	if(getifaddrs(&ifa) == -1)
 	{
@@ -68,8 +69,9 @@ unsigned get_interface(int domain, int flags)
 	}
 
 	int family;
+	unsigned index = 0;	
 
-	for(struct ifaddrs * i = ifa; i != NULL; i = ifa->ifa_next)
+	for(struct ifaddrs * i = ifa; i != NULL; i = i->ifa_next)
 	{
 		family = i->ifa_addr->sa_family;
 		int fl = i->ifa_flags & flags;
@@ -81,15 +83,20 @@ unsigned get_interface(int domain, int flags)
 			continue;
 		}
 
-		unsigned index = if_nametoindex(if_name);
+		index = if_nametoindex(if_name);
 		if(index) 
 		{
 			printf("[i] Network interface found!\n");
-			return index;
+			break;
 		}
 	}
 
-	printf("[-] No corresponding network interface found!\n");
+	freeifaddrs(ifa);
 
-	return 0;
+	if(!index)
+	{
+		printf("[-] No corresponding network interface found!\n");
+	}
+
+	return index;
 }
