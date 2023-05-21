@@ -361,9 +361,3 @@ void upload(int family, const char * ip, uint16_t port, struct session * se, con
  * to download and write
  * data.
  */
-/*
-void download(int fd, const char * filename)
-{
-
-}
-*/

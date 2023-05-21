@@ -282,7 +282,7 @@ void mp_shell()
 
 		client_send_dataflow(cl, p, rcv);
 
-		mp_recv(cl, &se, *rcv);
+		mp_recv(cl, &se, p, *rcv);
 
 		free(p);
 		free(*rcv);

@@ -208,7 +208,7 @@ void mp_recv_posts(int fd, uint16_t n)
  * code.
  */
 
-int mp_recv(const struct host * cl, struct session * se, const char * data)
+int mp_recv(const struct host * cl, struct session * se, const struct packet * context, const char * data)
 {
 	struct packet * p = melt_tcp_packet(data);
 	struct mp_header mhd;
@@ -236,7 +236,7 @@ int mp_recv(const struct host * cl, struct session * se, const char * data)
 		break;
 
 	case UPLOAD:
-		upload();
+		upload(AF_INET4, DEFAULT_BOOTSTRAP, mhd.n, context->data);
 		break;
 
 	case DOWNLOAD:

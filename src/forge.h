@@ -25,6 +25,7 @@ struct packet
 };
 
 struct packet * make_packet();
+struct packet * copy_packet(const struct packet*);
 void free_packet(struct packet*);
 
 const char * bufferize(const struct header*);
