@@ -235,6 +235,14 @@ int mp_recv(const struct host * cl, struct session * se, const char * data)
 		printf("[i] You successfully subscribed to %d thread!\n", mhd.nthread);
 		break;
 
+	case UPLOAD:
+		upload();
+		break;
+
+	case DOWNLOAD:
+	//	download();
+		break;
+
 	default:
 		printf("[-] Error %d has occured!\n", mhd.rc);
 	}

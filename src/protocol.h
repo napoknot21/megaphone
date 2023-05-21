@@ -143,4 +143,6 @@ struct packet * mp_upload_post(const struct session*, struct post*, uint16_t);
 struct packet * mp_request_threads(const struct session*, uint16_t, uint16_t*);
 struct packet * mp_subscribe(const struct session*, uint16_t);
 
+void download(int, const char*, uint16_t, const char*);
+
 #endif

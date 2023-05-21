@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 struct host * make_host()
 {
@@ -277,3 +278,78 @@ char * unchunk_data(struct packet * p, size_t len)
 
 	return data;
 }
+
+/*
+ * This function manages
+ * to read and upload
+ * data
+ */
+
+void upload(int family, const char * ip, uint16_t port, struct session * se, const char * filename)
+{
+	/*
+	 * Reads data first
+	 */
+
+	int fd = open(filename, O_RDONLY);
+
+	if(fd == -1)
+	{
+		printf("[-] An error occured while opening %s in read-only mode!", filename);
+		return;
+	}
+	
+	size_t len = lseek(fd, 0, SEEK_END);
+	lseek(fd, 0, SEEK_SET);
+
+	char * data = malloc(len + 1);
+	memset(data, 0x0, len + 1);
+
+	read(fd, data, len);
+	close(fd);
+
+	/*
+	 * Then formats data
+	 */
+
+	size_t pt_len = 0;
+	struct mp_udp_header muh = {UPLOAD_FILE, se->uid, 0};
+	struct packet * packets = chunk_data(muh, data, &pt_len);
+
+	/*
+	 * Then opens a UDP socket
+	 * and send formatted data
+	 */
+
+	int sock = socket(PF_INET, SOCK_DGRAM, 0);
+
+	struct sockaddr addr;
+	memset(&addr, 0x0, sizeof(addr));
+
+	addr.sa_family = family;
+	port = htons(port);
+
+	memmove(addr.sa_data, &port, 2);
+	inet_pton(family, ip, addr.sa_data + 6);
+
+	char block[MP_UDP_BLOCK_SIZE];
+
+	for(size_t k = 0; k < pt_len; k++)
+	{	
+		memmove(block, bufferize(&packets[k].header), 4);
+		memmove(block + 4, packets[k].data, 508);
+		sendto(sock, block, MP_UDP_BLOCK_SIZE, 0, &addr, sizeof(struct sockaddr));
+	}
+}
+
+/*
+ * This function manages
+ * to download and write
+ * data.
+ */
+/*
+void download(int fd, const char * filename)
+{
+
+}
+*/
