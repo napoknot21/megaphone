@@ -242,7 +242,6 @@ void run ()
 		return;
     }
     
-    int cli_socket;
     pthread_t thread_id;
     socklen_t addrlen;
 
@@ -250,9 +249,11 @@ void run ()
 
         struct sockaddr_in cli_addr;
         addrlen = sizeof(cli_addr);
- 
-        if ((cli_socket = accept(serv.tcp_sock, (struct sockaddr *)&cli_addr, &addrlen)) == -1) {
+
+        int *cli_socket = malloc(sizeof(int)); 
+        if ((*cli_socket = accept(serv.tcp_sock, (struct sockaddr *)&cli_addr, &addrlen)) == -1) {
             perror("[!] Accept failed...\n");
+            free(cli_socket);
             continue;
         }
 
@@ -261,23 +262,27 @@ void run ()
         pthread_mutex_lock(&lock);
 
         if (handlers >= MAX_CLIENTS) {
+
             printf("[!] Maximum number of clients reached, closing connections...\n");
-            close(cli_socket);
+            close(*cli_socket);
+            free(cli_socket);
+        
         } else {
-            threads[handlers++] = cli_socket;
-            if ((pthread_create(&thread_id, NULL, handler_client, (void *) &cli_socket)) != 0) {
+
+            threads[handlers++] = *cli_socket;
+            
+            if ((pthread_create(&thread_id, NULL, handler_client, cli_socket)) != 0) {
                 perror("[!] pthread_create failed...\n");
                 exit(EXIT_FAILURE);
             }
 
+            pthread_detach(thread_id);
         }
 
         pthread_mutex_unlock(&lock);
-
     }
 
     close_server(&serv);
-    
 }
 
 
