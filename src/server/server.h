@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "../protocol.h"
+
 #define BUFF_SIZE 4096 //tmp value
 #define MAX_CLIENTS 10
 
@@ -19,7 +21,7 @@ void run_server (void);
 
 /**
  * @brief: Initialize the socket connection in UDP mode
- * @param serv : The host struct for the server
+ * @param sock : The sock pointer to the socket server TCP/UDP
  * @param domain : the host domain (AF_INET, AF_INET6, etc...)
  * @param protocol : The type of connection (TCP[SOCK_STREAM] or UDP[SOCK_DGRAM])
  * @param distant : string with the IP address
@@ -27,20 +29,37 @@ void run_server (void);
  * @return 0 in success and the status error in case of failure
  */ 
 int create_socket (
-    struct host *serv, 
+    int *sock, 
     int domain, int protocol, 
-    const char * distant, 
+    const char * distant,
     uint16_t port
 );
 
 
 /**
- * @brief Create a TCP socket for the server
- * @param serv : The host structure for the server
- * @param domain : The host domain (AF_INET, AF_INET6, etc...)
+ * @brief Create a UDP socket for the server
+ * @param sock : The sock pointer to the socket server UDP
+ * @param mc_addr : Multicast address
+ * @param port : The port number
  * @return 0 in success and the status error in case of failure
  */
-int create_tcp_socket (struct host *serv, int domain);
+int create_udp_socket (
+    int *sock,
+    const char *mc_addr,
+    uint16_t port
+);
+
+
+//TODO: Check/test this function 
+/**
+ * @brief Add a socket to the UPD group
+ * @param sock : The sock pointer
+ * @param mc_addr : Multicast address
+ */
+void join_multicast_group (
+    int *sock,
+    const char *mc_addr
+);
 
 
 /**
@@ -52,35 +71,25 @@ void * handler_client (void *p_client_socket);
 
 /**
  * @brief: Removes a client (socket) from the list of connections
- * @param cl : host struct pointer for the client
+ * @param sock : the socket to be removed
  */
-void remove_client (struct host *cl);
-
-
-
-
-/**
- * @brief: 
- *
- *
- *
- */
- int create_udp_sockets (struct host *serv, int domain);
+void remove_client (int *sock);
 
 
 /**
  * @brief : Functions that accept connections from clients
  * @param sock_fd : socket that will be closed
  * @param cli_addr : Pointer to the sockaddr_in structure
- * @return : 0 if the socket is accepeted, else other integer
+ * @return : 0 if the socket is accepted, else other integer
  */
-int accept_connection (int sock_fd, SA_IN *cli_addr);
+int accept_tcp_connection (struct host *serv);
 
 
 /**
  * @brief : The function that close all sockets for a host structure
- * @param cl : The host structure (client or server)
+ * @param serv : The host structure (client or server)
  */
-void close_socket (struct host *cl);
+void close_server (struct host * serv);
+
 
 #endif
