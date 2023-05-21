@@ -325,7 +325,7 @@ void close_server (struct host * serv)
 
 int main (int argc, char **argv) 
 {
-    //run();
+    run();
     pthread_mutex_destroy(&lock);
     return 0;
 }

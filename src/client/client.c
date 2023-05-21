@@ -95,8 +95,8 @@ int set_udp_socket (int * sock, const char* mc_addr, uint16_t mc_port)
 
 fd_set * make_fd_set(struct host * cl, int* max)
 {
-	fd_set rset;
-	FD_ZERO(&rset);
+	fd_set * rset = malloc(sizeof(fd_set));
+	FD_ZERO(rset);
 	*max = ((int *) (cl->udp_socks->data))[0];
 	for (int i = 0; i < cl->udp_socks->size; i++)
 	{
@@ -104,33 +104,36 @@ fd_set * make_fd_set(struct host * cl, int* max)
 		{
 			*max = ((int *) (cl->udp_socks->data))[i];
 		}
-		FD_SET((cl->udp_socks->data)[i], &rset);
+		int * us = at(cl->udp_socks, i);
+		FD_SET(*us, rset);
 	}
 
-	return &rset;
+	return rset;
 }
 
-int client_recv_dataflow(struct host * cl) 
+void * client_recv_dataflow(void * arg) 
 {
+	struct host * cl = (struct host *) arg;
+	struct timeval t;
+
+	memset(&t, 0x0, sizeof(struct timeval));
+
+	t.tv_usec = 100;
+
 	while(1)
 	{
 		int max;
 		fd_set * rset = make_fd_set(cl, &max);
 		char buf[MP_UDP_BLOCK_SIZE];
 		memset(buf, 0x0, sizeof(buf));
-		
-		struct timeval * t;
-		memset(t, 0x0, sizeof(t));
-		t->tv_usec = 100;
 
-		int to_read = select(max+1, rset, NULL, 0, t);
+		int to_read = select(max+1, rset, NULL, 0, &t);
 		recv(to_read, buf, strlen(buf), 0);
 		printf(buf);
 		free(rset);
-	}
-
-	return 0;
+	}	
 	
+	return NULL;
 }
 
 int communication_udp(struct host * cl) 

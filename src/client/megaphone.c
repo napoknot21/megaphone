@@ -235,11 +235,11 @@ int mp_recv(const struct host * cl, struct session * se, const struct packet * c
 		printf("[i] You successfully subscribed to %d thread!\n", mhd.nthread);
 		break;
 
-	case UPLOAD:
-		upload(AF_INET4, DEFAULT_BOOTSTRAP, mhd.n, context->data);
+	case UPLOAD_FILE:
+		upload(AF_INET, DEFAULT_BOOTSTRAP, mhd.n, se, context->data);
 		break;
 
-	case DOWNLOAD:
+	case DOWNLOAD_FILE:
 	//	download();
 		break;
 
