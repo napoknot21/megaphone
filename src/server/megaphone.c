@@ -60,7 +60,7 @@ struct packet * mp_signup(char * username)
 
     push_back(sessions, (void *) &se);
 
-    printf("[i] %s subscribed!", username);
+    printf("[i] %s signed-up!", username);
 
     uint16_t lfield = fusion(SIGNUP, se.uid);
     p->header.fields = malloc(FIELD_SIZE);
@@ -116,7 +116,7 @@ struct packet * mp_upload_post(const struct session * se, struct post * pt, uint
 	return p;
 }
 
-struct packet * mp_request_threads(const struct session * se, uint16_t thread, uint16_t n)
+struct packet * mp_request_threads(const struct session * se, uint16_t thread, uint16_t * n)
 {
 	struct packet * p = NULL;
 	size_t size = 0;
@@ -131,7 +131,7 @@ struct packet * mp_request_threads(const struct session * se, uint16_t thread, u
 			struct thread * th = at(mp_threads, k);
 			size_t ps = th->posts->size;
 		
-			size += n <= ps ? n : ps;
+			size += *n <= ps ? *n : ps;
 		}
 	}
 	else if(thread - 1 < mp_threads->size)
@@ -139,7 +139,7 @@ struct packet * mp_request_threads(const struct session * se, uint16_t thread, u
 		struct thread * th = at(mp_threads, thread - 1);
 		size_t ps = th->posts->size;
 			
-		size = n <= ps ? n : ps;
+		size = *n <= ps ? *n : ps;
 	}
 	else
 	{
@@ -149,7 +149,7 @@ struct packet * mp_request_threads(const struct session * se, uint16_t thread, u
 	p = malloc((size + 1) * sizeof(struct packet));	
 	memset(p, 0x0, (size + 1) * sizeof(struct packet));
 
-	struct mp_header mhd = {FETCH, se->uid, !thread ? sth : thread, thread || !n ? size : n, 0};
+	struct mp_header mhd = {FETCH, se->uid, !thread ? sth : thread, thread || !(*n) ? size : *n, 0};
 	forge_header(MP_SERVER_SIDE, &p[0].header, mhd);
 
 	for(uint16_t i = bth; i < bth + sth; i++)
@@ -157,7 +157,7 @@ struct packet * mp_request_threads(const struct session * se, uint16_t thread, u
 		struct thread * th = at(mp_threads, i);
 		
 		size_t ps = th->posts->size;
-		size_t beg = n <= ps ? ps - n : 0;
+		size_t beg = *n <= ps ? ps - *n : 0;
 
 		for(size_t k = beg; k < ps; k++)
 		{
@@ -173,16 +173,37 @@ struct packet * mp_request_threads(const struct session * se, uint16_t thread, u
 		}
 	}
 
+	*n = size + 1;
+
 	return p;
 }
 
 struct packet * mp_subscribe(const struct session * se, uint16_t thread)
 {
 	struct packet * p = make_packet();
+	
+	if(thread && thread <= mp_threads->size)
+	{
+		struct thread * th = at(mp_threads, thread);
+
+		p->header.fields = malloc(11 * FIELD_SIZE);
+		uint16_t cu = fusion(SUBSCRIBE, se->uid);
+
+		p->header.fields[MP_FIELD_CR_UUID] = htons(cu);
+		p->header.fields[MP_FIELD_THREAD] = htons(thread);
+		p->header.fields[MP_FIELD_NUMBER] = htons(MP_MULTICAST_PORT);
+		memmove(p->header.fields + 6, &th->addr, 16);
+	}
+
 	return p;
 }
 
-struct packet * mp_process_data(const char * data)
+int file_exists(uint16_t nthread, const char * filename)
+{
+	return 0;
+}
+
+struct packet * mp_process_data(const char * data, size_t * sp)
 {
     struct packet * recv_p = melt_tcp_packet(data);
     struct packet * send_p = NULL;
@@ -193,6 +214,7 @@ struct packet * mp_process_data(const char * data)
     uid_t id = get_uuid(lfield);
 
     struct session * se = get_session(id);
+    *sp = 1;
 
     if(!se) return send_p;
     
@@ -202,33 +224,57 @@ struct packet * mp_process_data(const char * data)
 	send_p = mp_signup(recv_p->data);
         break;
 
-    case POST: ;
+    case POST:
         uint16_t thread = recv_p->header.fields[MP_FIELD_THREAD];	
 	struct post pt = {MESSAGE, se->uid, recv_p->data};
 
         send_p = mp_upload_post(se, &pt, thread);
-	
 	break;
 
     case FETCH: 
         send_p = mp_request_threads(
 			se, 
 			recv_p->header.fields[MP_FIELD_THREAD], 
-			recv_p->header.fields[MP_FIELD_NUMBER]
+			&recv_p->header.fields[MP_FIELD_NUMBER]
 	);
+
+	*sp = recv_p->header.fields[MP_FIELD_NUMBER];
+
 	break;
 
     case SUBSCRIBE: 
         send_p = mp_subscribe(se, recv_p->header.fields[0]);
         break;
 
-    case UPLOAD_FILE: break;
+    case UPLOAD_FILE:
+	
+	if(file_exists(recv_p->header.fields[MP_FIELD_THREAD], recv_p->data))
+	{
+		/*
+		 * If the file already exists on this thread
+		 * it cannot be uploaded.
+		 */
 
-    case DOWNLOAD_FILE: break;
+		send_p = make_packet();
+	}
+	else
+	{
+		send_p = recv_p;
+		send_p->header.fields[MP_FIELD_NUMBER] = MP_UDP_PORT;
+
+		/*
+		 * Otherwise we start listening
+		 * on the giver port.
+		 */
+	}
+	break;
+
+    case DOWNLOAD_FILE: 
+	
+	break;
 
     default:
-	printf("[-] This request code is unknown!\n");
-        break;
+	printf("[-] This request code is unknown!\n"); 
     }
 
     return send_p;

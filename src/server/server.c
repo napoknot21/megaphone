@@ -148,8 +148,6 @@ void join_multicast_group(int *sock, const char* mc_addr)
 
 }
 
-
-
 void remove_client (int *sock)
 {
     pthread_mutex_lock(&lock);
@@ -184,16 +182,16 @@ void * handler_client (void * p_sock)
     int sock;
     memmove(&sock, (int *) p_sock, sizeof(int));
 
-    char block[TCP_BYTE_BLOCK_SIZE];
-    memset(block, 0x0, TCP_BYTE_BLOCK_SIZE);
+    char block[TCP_BLOCK_SIZE];
+    memset(block, 0x0, TCP_BLOCK_SIZE);
     
     struct string * data = make_string();
     ssize_t length;
 
-    while ((length = recv(sock, block, TCP_BYTE_BLOCK_SIZE, 0)) > 0) 
+    while ((length = recv(sock, block, TCP_BLOCK_SIZE, 0)) > 0) 
     {
 	    string_push_back(data, block, length);
-	    if(length < TCP_BYTE_BLOCK_SIZE)
+	    if(length < TCP_BLOCK_SIZE)
 	    {
 		    break;
 	    }

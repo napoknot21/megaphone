@@ -22,7 +22,6 @@
 #define MP_MULTICAST_PORT	1122
 
 #define MP_UDP_BLOCK_SIZE 	512
-#define MP_NET_BUFFER_SIZE 	512
 
 #define MP_HEADER_FIELD_SIZE	4
 
@@ -134,7 +133,7 @@ uint16_t fusion(uint16_t, uint16_t);
 
 struct packet * mp_signup(char*);
 struct packet * mp_upload_post(const struct session*, struct post*, uint16_t);
-struct packet * mp_request_threads(const struct session*, uint16_t, uint16_t);
+struct packet * mp_request_threads(const struct session*, uint16_t, uint16_t*);
 struct packet * mp_subscribe(const struct session*, uint16_t);
 
 #endif

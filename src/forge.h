@@ -6,8 +6,9 @@
 #include <stdint.h>
 #include <arpa/inet.h>
 
-#define FIELD_SIZE 		2
-#define TCP_BYTE_BLOCK_SIZE 	512
+#define FIELD_SIZE		2
+#define UDP_BLOCK_SIZE 		512
+#define TCP_BLOCK_SIZE		512
 
 struct header
 {
@@ -30,5 +31,8 @@ const char * bufferize(const struct header*);
 const char * forge_tcp_packet(const struct packet*);
 
 unsigned get_interface(int, int);
+
+size_t send_udp(struct sockaddr_in6, char*);
+size_t recv_udp(struct sockaddr_in6, char*);
 
 #endif

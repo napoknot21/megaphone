@@ -52,10 +52,10 @@ struct packet * mp_upload_post(const struct session * se, struct post * pt, uint
  * the corresponding request code FETCH.
  */
 
-struct packet * mp_request_threads(const struct session * se, uint16_t thread, uint16_t n) 
+struct packet * mp_request_threads(const struct session * se, uint16_t thread, uint16_t * n) 
 {
 	struct packet * p = make_packet();
-	struct mp_header mhd = {FETCH, se->uid, thread, n, 0};
+	struct mp_header mhd = {FETCH, se->uid, thread, *n, 0};
 
 	forge_header(MP_CLIENT_SIDE, &p->header, mhd);
 
@@ -141,7 +141,7 @@ struct packet * mp_request_for(const struct session * se, const request_code_t r
 		memmove(&thread, argv[0], 2);
 		memmove(&n, argv[1], 2);
 
-		p = mp_request_threads(se, thread, n);
+		p = mp_request_threads(se, thread, &n);
 		break;
 
 	case SUBSCRIBE:	
