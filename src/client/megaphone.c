@@ -38,8 +38,7 @@ struct packet * mp_upload_post(const struct session * se, struct post * pt, uint
 	p->size = strlen(pt->data);
 
 	struct mp_header mhd = {POST, se->uid, thread, 0, p->size};
-
-	forge_header(MP_CLIENT_SIDE, &p->header, mhd);
+	forge_header(MP_CLIENT_SIDE, &p->header, mhd);	
 
 	return p;
 }
@@ -122,7 +121,7 @@ struct packet * mp_request_for(const struct session * se, const request_code_t r
 			break;
 		}
 
-		memmove(&thread, argv[0], 2);
+		sscanf(argv[0], "%hd", &thread);	
 		struct post message_post = {MESSAGE, se->uid, argv[1]};
 
 		p = mp_upload_post(se, &message_post, thread);
@@ -218,7 +217,7 @@ int mp_recv(const struct host * cl, struct session * se, const struct packet * c
 		break;
 
 	case POST:
-		printf("[i] Your post has been successfully uploaded!\n");
+		printf("[i] Your post has been successfully uploaded on thread %d!\n", mhd.nthread);
 		break;
 
 	case FETCH:

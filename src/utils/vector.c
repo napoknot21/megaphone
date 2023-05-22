@@ -62,7 +62,7 @@ void push_back(struct vector * v, void * src)
 
 	void * elem = (v->copy) ? v->copy(src) : src;
 
-	memmove((char*) v->data + v->size, elem, v->elem_size);
+	memmove((char*) v->data + v->size * v->elem_size, elem, v->elem_size);
 	v->size++;
 }
 

@@ -40,7 +40,7 @@ struct in6_addr gen_multicast_addr()
 		struct thread * th = at(mp_threads, mp_threads->size - 1);
 		addr = th->addr;
 
-		addr.s6_addr[0] = (addr.s6_addr[0] + 1) % 0x10000;
+		addr.s6_addr[15] = (addr.s6_addr[0] + 1) % 0x10000;
 	}
 
 	char str[INET6_ADDRSTRLEN];
@@ -62,8 +62,8 @@ void mp_init()
 
 	mp_threads = make_vector(
 		(void* (*)(void*)) copy_thread,
-		(void (*)(void*)) free_session,
-		sizeof(struct session)
+		(void (*)(void*)) free_thread,
+		sizeof(struct thread)
 	);
 
 }
@@ -97,7 +97,9 @@ struct packet * mp_signup(char * username)
 struct packet * mp_upload_post(const struct session * se, struct post * pt, uint16_t thread)
 {
 	struct packet * p = make_packet();
-	struct mp_header mhd = {POST, se->uid, thread, 0, 0};
+	struct mp_header mhd = {POST, se->uid, 0, 0, 0};
+
+	printf("On post %d %ld\n", thread, mp_threads->size);
 
 	if(thread < mp_threads->size)
 	{
@@ -108,8 +110,15 @@ struct packet * mp_upload_post(const struct session * se, struct post * pt, uint
 		 */
 
 		struct thread * th = at(mp_threads, thread);
+
+		if(!th)
+		{
+			printf("Error!\n");	
+		}
+
 		push_back(th->posts, pt);
 	
+		mhd.nthread = thread;
 		printf("[i] New post has been uploaded on thread %d!\n", thread);
 	}
 	else
@@ -134,7 +143,9 @@ struct packet * mp_upload_post(const struct session * se, struct post * pt, uint
 		push_back(th.posts, pt);
 		push_back(mp_threads, &th);
 
-		printf("[i] Thread %ld has been created!\n", mp_threads->size);
+		mhd.nthread = mp_threads->size - 1;
+
+		printf("[i] Thread %ld has been created!\n", mp_threads->size - 1);
 	}
 
 	forge_header(MP_SERVER_SIDE, &p->header, mhd);
@@ -246,11 +257,11 @@ struct packet * mp_process_data(struct packet * recv_p, size_t * sp)
     if(!se && mhd.rc > SIGNUP)
     {
 	    *sp = 0;
+	    printf("[-] Session uuid is unknown and this is not a sign-up request!");
 	    return send_p;
     }
 
-    *sp = 1;
-    uint16_t thread;
+    *sp = 1; 
     
     switch(mhd.rc)
     {
@@ -261,11 +272,9 @@ struct packet * mp_process_data(struct packet * recv_p, size_t * sp)
 
     case POST:
        	printf("[i] Post request!\n");  
-        
-	thread = recv_p->header.fields[MP_FIELD_THREAD];	
+      	
 	struct post pt = {MESSAGE, se->uid, recv_p->data};
-
-        send_p = mp_upload_post(se, &pt, thread);
+        send_p = mp_upload_post(se, &pt, mhd.nthread);
 	break;
 
     case FETCH: 

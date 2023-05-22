@@ -205,8 +205,7 @@ void free_session(struct session * se)
 
 void print_post(const struct post * pt)
 {	
-	printf("New post from user %d\n\n", pt->uuid);
-	printf("%s", pt->data);
+	printf("From: %d\nContent: %s\n", pt->uuid, pt->data);	
 }
 
 void help()
