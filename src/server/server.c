@@ -212,7 +212,9 @@ void * handler_client (void * p_sock)
 	memmove(block + hd_s, (sp + i)->data, dt_s);
 
 	send(sock, block, hd_s + dt_s, 0);
+	
 	free(block);
+	free_packet(sp + i);
     } 
 
     remove_client(&sock);

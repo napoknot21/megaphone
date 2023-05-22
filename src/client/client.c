@@ -250,23 +250,13 @@ void mp_shell()
 	struct host * cl = make_host();
 	if_index = get_interface(AF_INET6, IFF_MULTICAST);	
 
-	/*
-	 * There we add TCP/IP socket
-	 */
-	
-	if(set_socket(&cl->tcp_sock, AF_INET, SOCK_STREAM, DEFAULT_BOOTSTRAP, MP_TCP_PORT))
-	{
-		printf("[-] Error while initializing client!\n");
-		return;
-	}
-
 	struct session se; 
 	memset(&se, 0x0, sizeof(se));
 
 	char * data = NULL;
 	size_t argc, llin = 0;	
 
-	do {
+	do {	
 		if(data) free(data);
 	
 		printf("megaphone $ ");
@@ -282,6 +272,16 @@ void mp_shell()
 		struct packet * p = mp_request_for(&se, rc, argc - 1, argv + 1);
 		struct packet * recv_p = make_packet();
 
+		/*
+		 * There we add TCP/IP socket
+		 */
+	
+		if(set_socket(&cl->tcp_sock, AF_INET, SOCK_STREAM, DEFAULT_BOOTSTRAP, MP_TCP_PORT))
+		{
+			printf("[-] Error while initializing client!\n");
+			return;
+		}
+
 		if(client_send_dataflow(cl, p, recv_p) != -1)
 		{
 			mp_recv(cl, &se, p, recv_p);
@@ -296,6 +296,7 @@ void mp_shell()
 		}
 
 		free(argv);	
+		close(cl->tcp_sock);
 
 	} while(strcmp(data, "quit\n"));
 

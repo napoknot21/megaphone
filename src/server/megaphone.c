@@ -12,6 +12,7 @@ struct vector * mp_threads;
 
 struct session * get_session(const uid_t uuid)
 {
+	printf("Getting session ... %ld\n", sessions->size);
 	for(size_t k = 0; k < sessions->size; k++)
 	{
 		struct session * se = at(sessions, k);
@@ -83,7 +84,7 @@ struct packet * mp_signup(char * username)
     se.uid = gen_id();
     se.username = username;
 
-    push_back(sessions, (void *) &se);
+    push_back(sessions, &se);
 
     printf("[i] %s signed-up!\n", username);
 
@@ -96,6 +97,7 @@ struct packet * mp_signup(char * username)
 struct packet * mp_upload_post(const struct session * se, struct post * pt, uint16_t thread)
 {
 	struct packet * p = make_packet();
+	struct mp_header mhd = {POST, se->uid, thread, 0, 0};
 
 	if(thread < mp_threads->size)
 	{
@@ -134,6 +136,8 @@ struct packet * mp_upload_post(const struct session * se, struct post * pt, uint
 
 		printf("[i] Thread %ld has been created!\n", mp_threads->size);
 	}
+
+	forge_header(MP_SERVER_SIDE, &p->header, mhd);
 
 	return p;
 }
@@ -233,8 +237,19 @@ struct packet * mp_process_data(struct packet * recv_p, size_t * sp)
     melt_header(MP_CLIENT_SIDE, &mhd, &recv_p->header); 
 
     struct session * se = NULL;
+
+    if(mhd.uuid)
+    {
+	    se = get_session(mhd.uuid);
+    }
+
+    if(!se && mhd.rc > SIGNUP)
+    {
+	    *sp = 0;
+	    return send_p;
+    }
+
     *sp = 1;
-    
     uint16_t thread;
     
     switch(mhd.rc)
