@@ -46,7 +46,7 @@ struct in6_addr gen_multicast_addr()
 	memset(str, 0x0, INET6_ADDRSTRLEN);
 
 	inet_ntop(AF_INET6, &addr, str, INET6_ADDRSTRLEN);
-	printf("[i] ");
+	printf("[i] %s has been generated!\n", str);
 
 	return addr;
 }
@@ -228,9 +228,9 @@ int file_exists(uint16_t nthread, const char * filename)
 	return 0;
 }
 
-struct packet * mp_process_data(const char * data, size_t * sp)
+struct packet * mp_process_data(struct packet * recv_p, size_t * sp)
 {
-    struct packet * recv_p = melt_tcp_packet(data);
+//    struct packet * recv_p = melt_tcp_packet(data);
     struct packet * send_p = NULL;
 
     uint16_t lfield = recv_p->header.fields[MP_FIELD_CR_UUID];

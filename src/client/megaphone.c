@@ -15,14 +15,11 @@ struct packet * mp_signup(char * username)
 {
 	struct packet * p = make_packet();
 
-	p->header.fields = malloc(FIELD_SIZE);
-	p->header.size = 1;
-
-	uint16_t lfield = fusion(SIGNUP, 0);
-		
-	p->header.fields[MP_FIELD_CR_UUID] = htons(lfield);
 	p->data = username;
 	p->size = strlen(username);
+
+	struct mp_header mhd = {SIGNUP, 0, 0, 0, p->size};
+	forge_header(MP_CLIENT_SIDE, &p->header, mhd);
 
 	printf("[i] username: %s\n", username);
 	return p;

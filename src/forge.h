@@ -29,7 +29,7 @@ struct packet * copy_packet(const struct packet*);
 void free_packet(struct packet*);
 
 const char * bufferize(const struct header*);
-const char * forge_tcp_packet(const struct packet*);
+char * forge_tcp_packet(const struct packet*);
 
 unsigned get_interface(int, int);
 

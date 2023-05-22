@@ -29,7 +29,7 @@ void forge_header(int side, struct header * hd, const struct mp_header mhd)
 	size_t fs = MP_HEADER_FIELD_SIZE * FIELD_SIZE;
 
 	hd->fields = malloc(!side ? fs : fs - FIELD_SIZE);
-	hd->size = MP_HEADER_FIELD_SIZE;
+	hd->size = MP_HEADER_FIELD_SIZE - 1;
 
 	uint16_t cu = fusion(mhd.rc, mhd.uuid);
 
@@ -40,7 +40,7 @@ void forge_header(int side, struct header * hd, const struct mp_header mhd)
 	if(side == MP_CLIENT_SIDE)
 	{
 		hd->fields[MP_FIELD_DATALEN] = htons(mhd.len);
-		hd->size--;
+		hd->size++;
 	}
 }
 

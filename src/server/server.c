@@ -182,27 +182,37 @@ void * handler_client (void * p_sock)
     int sock;
     memmove(&sock, (int *) p_sock, sizeof(int));
 
-    char block[TCP_BLOCK_SIZE];
-    memset(block, 0x0, TCP_BLOCK_SIZE);
-    
-    struct string * data = make_string();
-    ssize_t length;
+    struct packet rp;
 
-    while ((length = recv(sock, block, TCP_BLOCK_SIZE, 0)) > 0) 
+    size_t header_size = MP_HEADER_FIELD_SIZE * FIELD_SIZE; 
+
+    rp.header.fields = malloc(header_size);
+    rp.header.size = header_size;
+
+    recv(sock, rp.header.fields, header_size, 0);
+
+    for(size_t k = 0; k < MP_HEADER_FIELD_SIZE; k++)
     {
-	    string_push_back(data, block, length);
-	    if(length < TCP_BLOCK_SIZE)
-	    {
-		    break;
-	    }
+	    rp.header.fields[k] = ntohs(rp.header.fields[k]);
     }
 
-    string_push_back(data, "\0", 1);
+    rp.size = rp.header.fields[MP_FIELD_DATALEN];
+    rp.data = malloc(rp.size);
 
-    size_t packet_len = 1;
-    struct packet * back_packet = mp_process_data(data->data, &packet_len);
+    recv(sock, rp.data, rp.size, 0);
 
-    free_string(data);
+    size_t len = 1;
+    struct packet * sp = mp_process_data(&rp, &len);
+
+    for(size_t i = 0; i < len; i++)
+    {
+    	size_t raw_size = (sp + i)->size + (sp + i)->header.size * FIELD_SIZE;
+    	char * block = malloc(raw_size);
+
+	send(sock, block, raw_size, 0);
+
+	free(block);
+    } 
 
     remove_client(&sock);
     pthread_exit(NULL);
