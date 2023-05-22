@@ -1,3 +1,3 @@
 # Megaphone
 
-Créé un répertoire /bin
+Créer un répertoire bin
