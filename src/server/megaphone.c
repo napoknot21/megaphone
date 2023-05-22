@@ -87,11 +87,8 @@ struct packet * mp_signup(char * username)
 
     printf("[i] %s signed-up!", username);
 
-    uint16_t lfield = fusion(SIGNUP, se.uid);
-    p->header.fields = malloc(FIELD_SIZE);
-    p->header.size = 1;
-
-    p->header.fields[MP_FIELD_CR_UUID] = htons(lfield);
+    struct mp_header mhd = {SIGNUP, se.uid, 0, 0, 0};
+    forge_header(MP_SERVER_SIDE, &p->header, mhd); 
 
     return p;
 }
@@ -230,35 +227,37 @@ int file_exists(uint16_t nthread, const char * filename)
 
 struct packet * mp_process_data(struct packet * recv_p, size_t * sp)
 {
-//    struct packet * recv_p = melt_tcp_packet(data);
     struct packet * send_p = NULL;
+    struct mp_header mhd;
 
-    uint16_t lfield = recv_p->header.fields[MP_FIELD_CR_UUID];
+    melt_header(MP_CLIENT_SIDE, &mhd, &recv_p->header);
 
-    uint16_t code = get_rq_code(lfield);
-    uid_t id = get_uuid(lfield);
+    printf("%d %d\n", recv_p->header.fields[MP_FIELD_CR_UUID], mhd.rc);
 
-    struct session * se = get_session(id);
+
+    struct session * se = NULL;
     *sp = 1;
-
-	uint16_t thread;
-
-    if(!se) return send_p;
     
-    switch (code)
+    uint16_t thread;
+    
+    switch(mhd.rc)
     {
-    case SIGNUP: 
-	send_p = mp_signup(recv_p->data);
+    case SIGNUP:
+	printf("[i] Sign-up request!\n"); 
+	send_p = mp_signup(recv_p->data);	
         break;
 
     case POST:
-        thread = recv_p->header.fields[MP_FIELD_THREAD];	
-		struct post pt = {MESSAGE, se->uid, recv_p->data};
+       	printf("[i] Post request!\n");  
+        
+	thread = recv_p->header.fields[MP_FIELD_THREAD];	
+	struct post pt = {MESSAGE, se->uid, recv_p->data};
 
         send_p = mp_upload_post(se, &pt, thread);
 	break;
 
     case FETCH: 
+	printf("[i] Fetch request!\n"); 
         send_p = mp_request_threads(
 			se, 
 			recv_p->header.fields[MP_FIELD_THREAD], 
@@ -269,12 +268,13 @@ struct packet * mp_process_data(struct packet * recv_p, size_t * sp)
 
 	break;
 
-    case SUBSCRIBE: 
+    case SUBSCRIBE:
+	printf("[i] Subscribe request!\n"); 
         send_p = mp_subscribe(se, recv_p->header.fields[0]);
         break;
 
     case UPLOAD_FILE:
-	
+	printf("[i] Upload request!\n"); 	
 	if(file_exists(recv_p->header.fields[MP_FIELD_THREAD], recv_p->data))
 	{
 		/*

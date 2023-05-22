@@ -33,6 +33,8 @@ void forge_header(int side, struct header * hd, const struct mp_header mhd)
 
 	uint16_t cu = fusion(mhd.rc, mhd.uuid);
 
+	printf("%d %d %d\n", cu, mhd.rc, mhd.uuid);
+
 	hd->fields[MP_FIELD_CR_UUID] = htons(cu);
 	hd->fields[MP_FIELD_THREAD] = htons(mhd.nthread);
 	hd->fields[MP_FIELD_NUMBER] = htons(mhd.n);
@@ -48,17 +50,17 @@ void melt_header(int side, struct mp_header * mhd, const struct header * hd)
 {
 	memset(mhd, 0x0, sizeof(struct mp_header));
 
-	uint16_t lfield = ntohs(hd->fields[MP_FIELD_CR_UUID]);
+	uint16_t lfield = hd->fields[MP_FIELD_CR_UUID];
 
 	mhd->rc = get_rq_code(lfield);
 	mhd->uuid = get_uuid(lfield);
 
-	mhd->nthread = ntohs(hd->fields[MP_FIELD_THREAD]);
-	mhd->n = ntohs(hd->fields[MP_FIELD_NUMBER]);
+	mhd->nthread = hd->fields[MP_FIELD_THREAD];
+	mhd->n = hd->fields[MP_FIELD_NUMBER];
 
 	if(side == MP_CLIENT_SIDE)
 	{
-		mhd->len = ntohs(hd->fields[MP_FIELD_DATALEN]);
+		mhd->len = hd->fields[MP_FIELD_DATALEN];
 	}
 }
 

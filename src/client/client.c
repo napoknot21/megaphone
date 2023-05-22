@@ -154,41 +154,38 @@ int communication_udp(struct host * cl)
  * back the raw received data.
  */
 
-int client_send_dataflow(const struct host * cl, const struct packet * p, char ** rcv)
+int client_send_dataflow(const struct host * cl, const struct packet * p, struct packet * rp)
 {
-	char * data = forge_tcp_packet(p);
-	int status = send(cl->tcp_sock, data, strlen(data), 0);	
+	size_t len = 0;
+	char * data = forge_tcp_packet(p, &len);
+	int status = send(cl->tcp_sock, data, len, 0);	
 
 	free(data);
 
-	if(status)
+	if(status == -1)
 	{
 		printf("[-] An error occured while sending packet!\n");
 		return status;
-	}	
+	}
 
-	uint16_t lfield;
-	recv(cl->tcp_sock, &lfield, FIELD_SIZE, 0);
+	rp->header.size = 3;
+	rp->header.fields = malloc(FIELD_SIZE * rp->header.size);	
 
-	lfield = ntohs(lfield);
+	recv(cl->tcp_sock, rp->header.fields, FIELD_SIZE * rp->header.size, 0);
+
+	uint16_t lfield = rp->header.fields[MP_FIELD_CR_UUID];
+	printf("lfield %d\n", lfield);	
 	uint16_t rc = get_rq_code(lfield);
-	
-	size_t size;
 
 	if(rc == SUBSCRIBE)
 	{
-		size = FIELD_SIZE * MP_HEADER_FIELD_SIZE;		
-	}
-	else
-	{
-		size = FIELD_SIZE * (MP_HEADER_FIELD_SIZE - 1);	
+		rp->data = malloc(16);	
+		size_t bytes = recv(cl->tcp_sock, rp->data, 16, 0);
+		
+		rp->size = bytes;
 	}
 
-	*rcv = malloc(size);
-	memmove(*rcv, &lfield, FIELD_SIZE);
-	size_t bytes = recv(cl->tcp_sock, *rcv + FIELD_SIZE, size, 0);
-
-	return bytes;	
+	return 0;	
 }
 
 /*
@@ -267,7 +264,7 @@ void mp_shell()
 	memset(&se, 0x0, sizeof(se));
 
 	char * data = NULL;
-	size_t argc, llin = 0;
+	size_t argc, llin = 0;	
 
 	do {
 		if(data) free(data);
@@ -283,16 +280,15 @@ void mp_shell()
 		printf("[!] Request Code: %d\n", rc);
 
 		struct packet * p = mp_request_for(&se, rc, argc - 1, argv + 1);
-		char ** rcv = malloc(sizeof(char*));
+		struct packet * recv_p = make_packet();
 
-		if(!client_send_dataflow(cl, p, rcv))
+		if(client_send_dataflow(cl, p, recv_p) != -1)
 		{
-			mp_recv(cl, &se, p, *rcv);
-			free(*rcv);	
+			mp_recv(cl, &se, p, recv_p);
 		}
 
-		free(p);	
-		free(rcv);
+		free(p);
+		free_packet(recv_p);
 
 		for(size_t k = 0; k < argc; k++)
 		{

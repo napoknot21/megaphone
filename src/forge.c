@@ -18,16 +18,16 @@ const char * bufferize(const struct header * hd)
 	return (const char*) buffer;
 }
 
-char * forge_tcp_packet(const struct packet * p)
+char * forge_tcp_packet(const struct packet * p, size_t * len)
 {
     size_t hd_size = p->header.size * FIELD_SIZE;
 
     printf("[i][forge]\n\tHeader size \t-- %ld\n\tData size \t-- %ld\n", hd_size, p->size);
 
-    size_t bs = p->size + hd_size;
+    *len = p->size + hd_size;
 
-    char * buffer = malloc(bs);
-    memset(buffer, 0x0, bs);
+    char * buffer = malloc(*len);
+    memset(buffer, 0x0, *len);
     
    // const char * header_bytes = bufferize(&p->header);
 

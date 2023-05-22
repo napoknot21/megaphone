@@ -189,7 +189,7 @@ void * handler_client (void * p_sock)
     rp.header.fields = malloc(header_size);
     rp.header.size = header_size;
 
-    recv(sock, rp.header.fields, header_size, 0);
+    recv(sock, rp.header.fields, header_size, 0); 
 
     for(size_t k = 0; k < MP_HEADER_FIELD_SIZE; k++)
     {
@@ -200,6 +200,7 @@ void * handler_client (void * p_sock)
     rp.data = malloc(rp.size);
 
     recv(sock, rp.data, rp.size, 0);
+    printf("Data has been received %d %ld %s\n", get_rq_code(htons(rp.header.fields[MP_FIELD_CR_UUID])), rp.size, rp.data);
 
     size_t len = 1;
     struct packet * sp = mp_process_data(&rp, &len);
@@ -210,7 +211,6 @@ void * handler_client (void * p_sock)
     	char * block = malloc(raw_size);
 
 	send(sock, block, raw_size, 0);
-
 	free(block);
     } 
 
@@ -335,7 +335,9 @@ void close_server (struct host * serv)
 
 int main (int argc, char **argv) 
 {
+    mp_init();
     run();
     pthread_mutex_destroy(&lock);
+    mp_close();
     return 0;
 }
