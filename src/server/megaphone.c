@@ -241,6 +241,8 @@ struct packet * mp_process_data(struct packet * recv_p, size_t * sp)
     struct session * se = get_session(id);
     *sp = 1;
 
+	uint16_t thread;
+
     if(!se) return send_p;
     
     switch (code)
@@ -250,8 +252,8 @@ struct packet * mp_process_data(struct packet * recv_p, size_t * sp)
         break;
 
     case POST:
-        uint16_t thread = recv_p->header.fields[MP_FIELD_THREAD];	
-	struct post pt = {MESSAGE, se->uid, recv_p->data};
+        thread = recv_p->header.fields[MP_FIELD_THREAD];	
+		struct post pt = {MESSAGE, se->uid, recv_p->data};
 
         send_p = mp_upload_post(se, &pt, thread);
 	break;
