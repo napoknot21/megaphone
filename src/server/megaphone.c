@@ -85,7 +85,7 @@ struct packet * mp_signup(char * username)
 
     push_back(sessions, (void *) &se);
 
-    printf("[i] %s signed-up!", username);
+    printf("[i] %s signed-up!\n", username);
 
     struct mp_header mhd = {SIGNUP, se.uid, 0, 0, 0};
     forge_header(MP_SERVER_SIDE, &p->header, mhd); 
@@ -230,10 +230,7 @@ struct packet * mp_process_data(struct packet * recv_p, size_t * sp)
     struct packet * send_p = NULL;
     struct mp_header mhd;
 
-    melt_header(MP_CLIENT_SIDE, &mhd, &recv_p->header);
-
-    printf("%d %d\n", recv_p->header.fields[MP_FIELD_CR_UUID], mhd.rc);
-
+    melt_header(MP_CLIENT_SIDE, &mhd, &recv_p->header); 
 
     struct session * se = NULL;
     *sp = 1;
@@ -244,7 +241,7 @@ struct packet * mp_process_data(struct packet * recv_p, size_t * sp)
     {
     case SIGNUP:
 	printf("[i] Sign-up request!\n"); 
-	send_p = mp_signup(recv_p->data);	
+	send_p = mp_signup(recv_p->data);
         break;
 
     case POST:

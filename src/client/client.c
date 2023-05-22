@@ -170,11 +170,11 @@ int client_send_dataflow(const struct host * cl, const struct packet * p, struct
 
 	rp->header.size = 3;
 	rp->header.fields = malloc(FIELD_SIZE * rp->header.size);	
+	memset(rp->header.fields, 0x0, FIELD_SIZE * rp->header.size);
 
 	recv(cl->tcp_sock, rp->header.fields, FIELD_SIZE * rp->header.size, 0);
 
-	uint16_t lfield = rp->header.fields[MP_FIELD_CR_UUID];
-	printf("lfield %d\n", lfield);	
+	uint16_t lfield = ntohs(rp->header.fields[MP_FIELD_CR_UUID]);
 	uint16_t rc = get_rq_code(lfield);
 
 	if(rc == SUBSCRIBE)

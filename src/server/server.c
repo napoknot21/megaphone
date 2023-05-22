@@ -187,30 +187,31 @@ void * handler_client (void * p_sock)
     size_t header_size = MP_HEADER_FIELD_SIZE * FIELD_SIZE; 
 
     rp.header.fields = malloc(header_size);
-    rp.header.size = header_size;
+    rp.header.size = MP_HEADER_FIELD_SIZE;
 
     recv(sock, rp.header.fields, header_size, 0); 
 
-    for(size_t k = 0; k < MP_HEADER_FIELD_SIZE; k++)
-    {
-	    rp.header.fields[k] = ntohs(rp.header.fields[k]);
-    }
-
-    rp.size = rp.header.fields[MP_FIELD_DATALEN];
+    rp.size = ntohs(rp.header.fields[MP_FIELD_DATALEN]);
     rp.data = malloc(rp.size);
 
-    recv(sock, rp.data, rp.size, 0);
-    printf("Data has been received %d %ld %s\n", get_rq_code(htons(rp.header.fields[MP_FIELD_CR_UUID])), rp.size, rp.data);
+    recv(sock, rp.data, rp.size, 0); 
 
     size_t len = 1;
     struct packet * sp = mp_process_data(&rp, &len);
 
+    size_t hd_s, dt_s;
+
     for(size_t i = 0; i < len; i++)
     {
-    	size_t raw_size = (sp + i)->size + (sp + i)->header.size * FIELD_SIZE;
-    	char * block = malloc(raw_size);
+	hd_s = (sp + i)->header.size * FIELD_SIZE;
+	dt_s = (sp + i)->size;
+	
+    	char * block = malloc(hd_s + dt_s);
 
-	send(sock, block, raw_size, 0);
+	memmove(block, (sp + i)->header.fields, hd_s);
+	memmove(block + hd_s, (sp + i)->data, dt_s);
+
+	send(sock, block, hd_s + dt_s, 0);
 	free(block);
     } 
 

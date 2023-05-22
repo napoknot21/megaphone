@@ -26,14 +26,12 @@ void forge_header(int side, struct header * hd, const struct mp_header mhd)
 {
 	memset(hd, 0x0, sizeof(struct header));
 
-	size_t fs = MP_HEADER_FIELD_SIZE * FIELD_SIZE;
+	size_t fs = !side ? MP_HEADER_FIELD_SIZE : 3;
 
-	hd->fields = malloc(!side ? fs : fs - FIELD_SIZE);
-	hd->size = MP_HEADER_FIELD_SIZE - 1;
+	hd->fields = malloc(fs * FIELD_SIZE);
+	hd->size = MP_HEADER_FIELD_SIZE;
 
-	uint16_t cu = fusion(mhd.rc, mhd.uuid);
-
-	printf("%d %d %d\n", cu, mhd.rc, mhd.uuid);
+	uint16_t cu = fusion(mhd.rc, mhd.uuid);	
 
 	hd->fields[MP_FIELD_CR_UUID] = htons(cu);
 	hd->fields[MP_FIELD_THREAD] = htons(mhd.nthread);
@@ -41,8 +39,7 @@ void forge_header(int side, struct header * hd, const struct mp_header mhd)
 	
 	if(side == MP_CLIENT_SIDE)
 	{
-		hd->fields[MP_FIELD_DATALEN] = htons(mhd.len);
-		hd->size++;
+		hd->fields[MP_FIELD_DATALEN] = htons(mhd.len);	
 	}
 }
 
@@ -50,17 +47,17 @@ void melt_header(int side, struct mp_header * mhd, const struct header * hd)
 {
 	memset(mhd, 0x0, sizeof(struct mp_header));
 
-	uint16_t lfield = hd->fields[MP_FIELD_CR_UUID];
+	uint16_t lfield = ntohs(hd->fields[MP_FIELD_CR_UUID]);
 
 	mhd->rc = get_rq_code(lfield);
 	mhd->uuid = get_uuid(lfield);
 
-	mhd->nthread = hd->fields[MP_FIELD_THREAD];
-	mhd->n = hd->fields[MP_FIELD_NUMBER];
+	mhd->nthread = ntohs(hd->fields[MP_FIELD_THREAD]);
+	mhd->n = ntohs(hd->fields[MP_FIELD_NUMBER]);
 
 	if(side == MP_CLIENT_SIDE)
 	{
-		mhd->len = hd->fields[MP_FIELD_DATALEN];
+		mhd->len = ntohs(hd->fields[MP_FIELD_DATALEN]);
 	}
 }
 

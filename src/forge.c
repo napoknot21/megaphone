@@ -27,9 +27,7 @@ char * forge_tcp_packet(const struct packet * p, size_t * len)
     *len = p->size + hd_size;
 
     char * buffer = malloc(*len);
-    memset(buffer, 0x0, *len);
-    
-   // const char * header_bytes = bufferize(&p->header);
+    memset(buffer, 0x0, *len); 
 
     memmove(buffer, p->header.fields, hd_size);
     memmove(buffer + hd_size, p->data, p->size);
