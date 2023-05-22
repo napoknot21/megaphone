@@ -129,7 +129,7 @@ void * client_recv_dataflow(void * arg)
 
 		int to_read = select(max+1, rset, NULL, 0, &t);
 		recv(to_read, buf, strlen(buf), 0);
-		printf(buf);
+		printf("%s\n", buf);
 		free(rset);
 	}	
 	
