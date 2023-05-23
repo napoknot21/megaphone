@@ -62,6 +62,7 @@ struct post
 	uid_t uuid;	
 
 	char * data;
+	size_t len;
 };
 
 struct post * copy_post(const struct post*);

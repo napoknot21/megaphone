@@ -30,7 +30,7 @@ char * forge_tcp_packet(const struct packet * p, size_t * len)
     memset(buffer, 0x0, *len); 
 
     memmove(buffer, p->header.fields, hd_size);
-    memmove(buffer + hd_size, p->data, p->size);
+    if(p->size) memmove(buffer + hd_size, p->data, p->size); 
 
     return buffer;
 }

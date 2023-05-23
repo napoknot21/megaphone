@@ -20,9 +20,13 @@ struct vector * copy_vector(const struct vector * model)
 	struct vector * copy = make_vector(model->copy, model->free, model->elem_size);
 	capacity(copy, model->capacity);
 
-	copy->size = model->size;
+	for(size_t i = 0; i < model->size; i++)
+	{
+		void * elem = at(model, i);
+		push_back(copy, elem);
+	}
 
-	memmove(copy->data, copy->data, copy->size * copy->elem_size);
+//	memmove(copy->data, copy->data, copy->size * copy->elem_size);
 
 	return copy;
 }
@@ -74,7 +78,7 @@ void pop_back(struct vector * v)
 	v->free(el);
 }
 
-void * at(struct vector * v, size_t i)
+void * at(const struct vector * v, size_t i)
 {
 	if(i >= v->size)
 	{

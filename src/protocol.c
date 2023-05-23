@@ -65,12 +65,23 @@ void forge_post_header(struct header * hd, const struct mp_post_header mph)
 {
 	memset(hd, 0x0, sizeof(struct header));
 
-	hd->fields = malloc(12 * FIELD_SIZE);
+	hd->size = 12;
+	hd->fields = malloc(hd->size * FIELD_SIZE);
 
-	hd->fields[0] = mph.nthread;
+	hd->fields[0] = htons(mph.nthread);
 	memmove(hd->fields + 1, mph.origin, 10);
 	memmove(hd->fields + 6, mph.pseudo, 10);
-	hd->fields[11] = mph.len;
+	hd->fields[11] = htons(mph.len);	
+}
+
+void melt_post_header(struct mp_post_header * mph, const struct header * hd)
+{
+	memset(mph, 0x0, sizeof(struct mp_post_header));
+
+	mph->nthread = ntohs(hd->fields[0]);
+	memmove(mph->origin, hd->fields + 1, 10);
+	memmove(mph->pseudo, hd->fields + 6, 10);
+	mph->len = ntohs(hd->fields[11]);
 }
 
 uint16_t get_rq_code(uint16_t field)
@@ -146,12 +157,13 @@ struct post * copy_post(const struct post * pt)
 	memset(copy, 0x0, sizeof(struct post));
 
 	copy->type = pt->type;
-	copy->uuid = pt->uuid;
+	copy->uuid = pt->uuid;	
 
-	size_t dps = strlen(pt->data);
+	copy->data = malloc(pt->len);
+	memmove(copy->data, pt->data, pt->len);
 
-	copy->data = malloc(dps);
-	memmove(copy->data, pt->data, dps);
+	copy->len = pt->len;
+	printf("Copying post ... %ld\n", copy->len);
 
 	return copy;
 }

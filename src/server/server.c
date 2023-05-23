@@ -183,6 +183,7 @@ void * handler_client (void * p_sock)
     memmove(&sock, (int *) p_sock, sizeof(int));
 
     struct packet rp;
+    memset(&rp, 0x0, sizeof(rp));
 
     size_t header_size = MP_HEADER_FIELD_SIZE * FIELD_SIZE; 
 
@@ -192,9 +193,12 @@ void * handler_client (void * p_sock)
     recv(sock, rp.header.fields, header_size, 0); 
 
     rp.size = ntohs(rp.header.fields[MP_FIELD_DATALEN]);
-    rp.data = malloc(rp.size);
 
-    recv(sock, rp.data, rp.size, 0); 
+    if(rp.size)
+    {
+    	rp.data = malloc(rp.size);
+    	recv(sock, rp.data, rp.size, 0); 
+    }
 
     size_t len = 1;
     struct packet * sp = mp_process_data(&rp, &len);
@@ -203,9 +207,11 @@ void * handler_client (void * p_sock)
 
     for(size_t i = 0; i < len; i++)
     {
-	hd_s = (sp + i)->header.size * FIELD_SIZE;
-	dt_s = (sp + i)->size;
-	
+	hd_s = sp[i].header.size * FIELD_SIZE;
+	dt_s = sp[i].size;
+
+	printf("Sending packet : %ld %ld %d\n", hd_s, dt_s, (sp + i)->header.fields[11]);
+
     	char * block = malloc(hd_s + dt_s);
 
 	memmove(block, (sp + i)->header.fields, hd_s);
@@ -214,8 +220,11 @@ void * handler_client (void * p_sock)
 	send(sock, block, hd_s + dt_s, 0);
 	
 	free(block);
-	free_packet(sp + i);
+	free((sp + i)->header.fields);
+	free((sp + i)->data);	
     } 
+
+    free(sp);
 
     remove_client(&sock);
     pthread_exit(NULL);

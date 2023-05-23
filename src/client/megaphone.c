@@ -134,8 +134,8 @@ struct packet * mp_request_for(const struct session * se, const request_code_t r
 			return NULL;
 		}
 
-		memmove(&thread, argv[0], 2);
-		memmove(&n, argv[1], 2);
+		sscanf(argv[0], "%hd", &thread);
+		sscanf(argv[1], "%hd", &n);	
 
 		p = mp_request_threads(se, thread, &n);
 		break;
@@ -178,23 +178,25 @@ struct packet * mp_request_for(const struct session * se, const request_code_t r
 
 void mp_recv_posts(int fd, uint16_t n)
 {
-	uint16_t thread;
-	char origin[10];
-	char pseudo[10];
-
-	char len;	
+	struct packet rp;
+	struct mp_post_header mph;	
+	
+	memset(&rp, 0x0, sizeof(rp));
+	rp.header.fields = malloc(12 * FIELD_SIZE);	
 
 	for(uint16_t k = 0; k < n; k++)
 	{
-		recv(fd, &thread, 2, 0);
-		recv(fd, origin, 10, 0);
-		recv(fd, pseudo, 10, 0);
-		recv(fd, &len, 1, 0);
+		recv(fd, rp.header.fields, 12 * FIELD_SIZE, 0);
+		melt_post_header(&mph, &rp.header);
 
-		char * data = malloc((size_t) len);
+		printf("Received data length : %d\n", rp.header.fields[11]);
 
-		recv(fd, data, (size_t) len, 0);
-		printf("[i][%d] %s -> %s\n%s\n", thread, origin, pseudo, data);
+		char * data = malloc(mph.len + 1);
+		memset(data, 0x0, mph.len + 1);
+
+		recv(fd, data, mph.len, 0);
+
+		printf("[i][%d] %d -> %s\n", mph.nthread, mph.len, data);
 	}
 }
 

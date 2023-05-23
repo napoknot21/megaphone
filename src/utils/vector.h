@@ -28,6 +28,6 @@ void pop_back(struct vector*);
 
 void clear(struct vector*);
 
-void * at(struct vector*, size_t);
+void * at(const struct vector*, size_t);
 
 #endif

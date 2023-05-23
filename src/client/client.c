@@ -157,7 +157,8 @@ int communication_udp(struct host * cl)
 int client_send_dataflow(const struct host * cl, const struct packet * p, struct packet * rp)
 {
 	size_t len = 0;
-	char * data = forge_tcp_packet(p, &len);
+	char * data = forge_tcp_packet(p, &len);	
+
 	int status = send(cl->tcp_sock, data, len, 0);	
 
 	free(data);
