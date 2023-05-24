@@ -180,7 +180,7 @@ struct packet * mp_request_threads(const struct session * se, uint16_t thread, u
 			struct thread * th = at(mp_threads, k);
 			size_t ps = th->posts->size;
 		
-			size += *n <= ps ? *n : ps;
+			size += *n && *n <= ps ? *n : ps;
 		}
 	}
 	else if(thread - 1 < mp_threads->size)

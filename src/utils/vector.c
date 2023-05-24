@@ -65,7 +65,7 @@ void push_back(struct vector * v, const void * src)
 		v->data = realloc(v->data, v->capacity);
 	}
 
-	void * elem = v->copy ? v->copy(src) : src;
+	const void * elem = v->copy ? v->copy(src) : src;
 
 	memmove((char*) v->data + v->size * v->elem_size, elem, v->elem_size);
 	v->size++;
