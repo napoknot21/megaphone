@@ -1,6 +1,6 @@
 #include "vector.h"
 
-struct vector * make_vector(void* (*copy)(void*), void (*free)(void*), size_t elem_size)
+struct vector * make_vector(void* (*copy)(const void*), void (*free)(void*), size_t elem_size)
 {
 	struct vector * v = malloc(sizeof(struct vector));
 	memset(v, 0x0, sizeof(struct vector));
@@ -56,7 +56,7 @@ void clear(struct vector * v)
 	memset(v->data, 0x0, v->capacity);
 }
 
-void push_back(struct vector * v, void * src)
+void push_back(struct vector * v, const void * src)
 {
 	while(v->size + 1 >= v->capacity)
 	{
@@ -64,7 +64,7 @@ void push_back(struct vector * v, void * src)
 		v->data = realloc(v->data, v->capacity);
 	}
 
-	void * elem = (v->copy) ? v->copy(src) : src;
+	void * elem = v->copy ? v->copy(src) : src;
 
 	memmove((char*) v->data + v->size * v->elem_size, elem, v->elem_size);
 	v->size++;
