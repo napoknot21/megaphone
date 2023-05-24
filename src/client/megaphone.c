@@ -232,7 +232,7 @@ int mp_recv(const struct host * cl, struct session * se, const struct packet * c
 		printf("[i] You successfully subscribed to thread %d!\n", mhd.nthread);
 		break;
 
-	case UPLOAD_FILE:
+	case UPLOAD_FILE: ;
 		char * filename = malloc(context->size + 1);
 
 		memset(filename, 0x0, context->size + 1);
