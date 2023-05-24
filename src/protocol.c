@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/time.h>
 
 struct host * make_host()
 {
@@ -251,11 +252,11 @@ void melt_udp_header(struct mp_udp_header * muh, const struct header * hd)
 {
 	memset(muh, 0x0, sizeof(struct mp_udp_header));
 
-	uint16_t lfield = ntohs(hd->fields[MP_FIELD_CR_UUID]);
+	uint16_t lfield = ntohs(hd->fields[0]);
 
 	muh->rc = get_rq_code(lfield);
 	muh->uuid = get_uuid(lfield);
-	muh->n = ntohs(hd->fields[MP_FIELD_THREAD]);
+	muh->n = ntohs(hd->fields[1]);
 }
 
 /*
@@ -266,7 +267,8 @@ void melt_udp_header(struct mp_udp_header * muh, const struct header * hd)
 
 struct packet * chunk_data(struct mp_udp_header muh, const char * data, size_t * len)
 {	
-	*len = *len / UDP_BLOCK_SIZE + 1;
+	size_t garb = *len % UDP_BLOCK_SIZE;
+	*len = *len / UDP_BLOCK_SIZE + 1;	
 
 	struct packet * packets = malloc(*len * sizeof(struct packet));
 	memset(packets, 0x0, *len * sizeof(struct packet));
@@ -274,15 +276,17 @@ struct packet * chunk_data(struct mp_udp_header muh, const char * data, size_t *
 	size_t offset = 0;	
 	size_t data_size = UDP_BLOCK_SIZE - 4;
 
-	for(uint16_t * i = &muh.n; *i < *len; (*i)++)
-	{	
-		forge_udp_header(&packets[*i].header, muh);
+	for(size_t i = 0; i < *len; i++)
+	{		
+		forge_udp_header(&packets[i].header, muh);
 		
-		packets[*i].size = data_size;
-		packets[*i].data = malloc(data_size);
+		packets[i].size = i + 1 == *len ? garb : data_size;
+		packets[i].data = malloc(data_size);
 
-		memmove(packets[*i].data, data + offset, data_size);
+		memmove(packets[i].data, data + offset, data_size);
 		offset += data_size;
+
+		muh.n++;	
 	}
 
 	return packets;
@@ -293,19 +297,27 @@ struct packet * chunk_data(struct mp_udp_header muh, const char * data, size_t *
  * packet' data in the correct order.
  */
 
-char * unchunk_data(struct packet * p, size_t len)
+char * unchunk_data(struct vector * p, size_t res)
 {
-	char * data = malloc(len * (UDP_BLOCK_SIZE - 4));	
+	size_t offset = UDP_BLOCK_SIZE - 4;
+	size_t size = p->size * offset + res + 1;
+
+	char * data = malloc(size);
+	memset(data, 0x0, size);
+
 	struct mp_udp_header muh;	
 
-	for(size_t i = 0; i < len; i++)
+	for(size_t i = 0; i < p->size; i++)
 	{
-		melt_udp_header(&muh, &p[i].header);
-		memmove(data + muh.n * UDP_BLOCK_SIZE, p[i].data, UDP_BLOCK_SIZE - 4);
+		struct packet * pa = at(p, i);
+
+		melt_udp_header(&muh, &pa->header);	
+		memmove(data + muh.n * offset, pa->data, offset);
 	}
 
 	return data;
 }
+
 
 /*
  * This function manages
@@ -351,29 +363,21 @@ void upload(int family, const char * ip, uint16_t port, struct session * se, con
 	 * and send formatted data
 	 */
 
-	int sock = socket(PF_INET, SOCK_DGRAM, 0);
-
+	int sock = socket(family, SOCK_DGRAM, 0);
 	struct sockaddr addr = format_addr(family, ip, port);
-	/*
-	memset(&addr, 0x0, sizeof(addr));
 
-	addr.sa_family = family;
-	port = htons(port);
-
-	memmove(addr.sa_data, &port, 2);
-	inet_pton(family, ip, addr.sa_data + 6);
-	*/
-	char block[MP_UDP_BLOCK_SIZE];
-	printf("[*] sending %ld byte(s) with %ld UDP packet(s)\n", len, pt_len);
+	char block[MP_UDP_BLOCK_SIZE];	
+	size_t bytes = 0;
 
 	for(size_t k = 0; k < pt_len; k++)
 	{	
-		memmove(block, bufferize(&packets[k].header), 4);
-		memmove(block + 4, packets[k].data, 508);
-		sendto(sock, block, MP_UDP_BLOCK_SIZE, 0, &addr, sizeof(struct sockaddr));
+		memmove(block, packets[k].header.fields, 4);	
+		memmove(block + 4, packets[k].data, packets[k].size);
+		bytes = sendto(sock, block, 4 + packets[k].size, 0, &addr, sizeof(struct sockaddr));
 	}
 
 	close(sock);
+	printf("[*] %ld/%ld byte(s) with %ld UDP packet(s) sent\n", bytes - 4, len, pt_len);
 }
 
 /*
@@ -382,7 +386,7 @@ void upload(int family, const char * ip, uint16_t port, struct session * se, con
  * data.
  */
 
-char * download(int family, const char * ip, uint16_t port)
+char * download(const char * filename, uint16_t port)
 {
 	int sock = socket(PF_INET, SOCK_DGRAM, 0);
 
@@ -400,63 +404,45 @@ char * download(int family, const char * ip, uint16_t port)
 		return NULL;
 	}
 
-	struct sockaddr from_addr = format_addr(family, ip, port);
-	socklen_t sa_size = sizeof(struct sockaddr);
+	printf("[*] listening on %d\n", port);
 
-	printf("[*] downloading from %s:%d\n", ip, port);
-
-	struct vector * data = make_vector(
-			(void* (*)(const void*)) copy_string,
-			(void (*)(void*)) free_string,
-			sizeof(struct string)
-			);
-
-	struct vector * indices = make_vector(
-			NULL,
-			NULL,
-			sizeof(size_t)
+	struct vector * packets = make_vector(
+			(void * (*)(const void*)) copy_packet,
+			(void (*)(void*)) free_packet,
+			sizeof(struct packet)
 			);
 
 	char block[MP_UDP_BLOCK_SIZE];
 	size_t bytes;
 
-	struct header hd;
-	memset(&hd, 0x0, sizeof(hd));
+	struct packet pa;
 
-	hd.size = 2;
-	hd.fields = malloc(hd.size * FIELD_SIZE);
+	memset(&pa, 0x0, sizeof(pa));
+	pa.header.size = 2;
+	pa.header.fields = malloc(pa.header.size * FIELD_SIZE);
 
-	struct mp_udp_header muh;	
+	size_t i = 0;	
+
+	printf("[*] downloading data\n");
 
 	do {
+		bytes = recv(sock, block, MP_UDP_BLOCK_SIZE, 0);
+		memmove(pa.header.fields, block, pa.header.size * FIELD_SIZE);	
 
-		bytes = recvfrom(sock, block, MP_UDP_BLOCK_SIZE, 0, &from_addr, &sa_size);
-		memmove(hd.fields, block, hd.size * FIELD_SIZE);
-		melt_udp_header(&muh, &hd);
+		pa.size = bytes - 4;
+		pa.data = malloc(pa.size);
 
-		push_back(indices, &muh.n);
-		
-		struct string * str = make_string();
+		memmove(pa.data, block + 4, pa.size);
+		push_back(packets, &pa);
 
-		string_push_back(str, block, bytes);
-		push_back(data, str);
-
-		free_string(str);
+		i++;
 
 	} while(bytes == MP_UDP_BLOCK_SIZE);
 
-	size_t filesize = (indices->size - 1) * 508 + (bytes - 4);
-	char * wo_data = malloc(filesize);
+	close(sock);
 
-	for(size_t k = 0; k < indices->size; k++)
-	{
-		size_t * index = at(indices, k);
-		struct string * block_str = at(data, k);
-
-		memmove(wo_data + *index * 508, block_str->vec->data, 508);
-	}
-
-	printf("[*] %ld byte(s) downloaded\n", filesize);
+	char * wo_data = unchunk_data(packets, bytes - 4);
+	printf("[*] %ld byte(s) downloaded from %ld UDP packet(s)\n%s\n", strlen(wo_data), packets->size, wo_data);
 
 	return wo_data;
 }

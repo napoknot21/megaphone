@@ -4,6 +4,7 @@
 #include <math.h>
 #include "megaphone.h"
 #include "../utils/vector.h"
+#include "../utils/string.h"
 
 uint16_t i = 0;
 
@@ -146,9 +147,9 @@ struct packet * mp_upload_post(const struct session * se, struct post * pt, uint
 		);
 
 		th.files = make_vector(
-				(void* (*)(const void*)) copy_vector,
-				(void (*)(void*)) free_vector,
-				sizeof(struct vector)
+				(void* (*)(const void*)) copy_string,
+				(void (*)(void*)) free_string,
+				sizeof(struct string)
 		);
 
 		push_back(th.posts, pt);	
@@ -274,7 +275,8 @@ int file_exists(uint16_t nthread, const char * filename)
 
 		for(size_t i = 0; i < th->files->size; i++)
 		{
-			if(!strcmp(filename, at(th->files, i)))
+			struct string * str = at(th->files, i);
+			if(!strcmp(filename, (char*) str->vec->data))
 			{
 				printf("[+] %s exists on thread %d\n", filename, nthread);
 				return 1;
@@ -291,16 +293,17 @@ int file_exists(uint16_t nthread, const char * filename)
 	return 0;
 }
 
-struct packet * mp_upload_file(const struct session * se, uint16_t thread, char * data, size_t len)
+struct packet * mp_io_file(const struct session * se, struct mp_header mhd, char * data, size_t len)
 {
 	struct packet * p = make_packet();
-	
 	char * filename = malloc(len + 1);
-	memset(filename, 0x0, len + 1);
 
+	memset(filename, 0x0, len + 1);
 	memmove(filename, data, len);
 
-	if(file_exists(thread, filename))
+	int fe = file_exists(mhd.nthread, filename);
+
+	if((mhd.rc == UPLOAD_FILE && fe) || (mhd.rc == DOWNLOAD_FILE && !fe))
 	{
 		/*
 		 * If the file already exists on this thread
@@ -309,8 +312,7 @@ struct packet * mp_upload_file(const struct session * se, uint16_t thread, char 
 	}
 	else
 	{
-		struct mp_header mhd = {UPLOAD_FILE, se->uid, thread, MP_UDP_PORT, 0};
-		forge_header(MP_CLIENT_SIDE, &p->header, mhd);	
+		forge_header(MP_SERVER_SIDE, &p->header, mhd);
 
 		/*
 		 * Otherwise it starts 
@@ -328,7 +330,7 @@ struct packet * mp_upload_file(const struct session * se, uint16_t thread, char 
 struct packet * mp_process_data(struct packet * recv_p, size_t * sp)
 {
     struct packet * send_p = NULL;
-    struct mp_header mhd;
+    struct mp_header mhd, smhd;
 
     melt_header(MP_CLIENT_SIDE, &mhd, &recv_p->header); 
 
@@ -380,16 +382,82 @@ struct packet * mp_process_data(struct packet * recv_p, size_t * sp)
 
     case UPLOAD_FILE:
 	printf("[i] Upload request!\n"); 	
-	send_p = mp_upload_file(se, mhd.nthread, recv_p->data, recv_p->size);
+	
+	smhd.rc = UPLOAD_FILE;
+	smhd.uuid = se->uid;
+	smhd.nthread = mhd.nthread;
+	smhd.n = MP_UDP_PORT;
+	smhd.len = 0;
+
+	send_p = mp_io_file(se, smhd, recv_p->data, recv_p->size);
 	break;
 
-    case DOWNLOAD_FILE: 
+    case DOWNLOAD_FILE: 	
 	
+	smhd.rc = DOWNLOAD_FILE;
+	smhd.uuid = se->uid;
+	smhd.nthread = mhd.nthread;
+	smhd.n = 0;
+	smhd.len = 0;
+
+	send_p = mp_io_file(se, smhd, recv_p->data, recv_p->size);
 	break;
 
     default:
 	printf("[-] This request code is unknown!\n"); 
+    	*sp = 0;
     }
 
     return send_p;
+}
+
+void udp_stage(int family, const char * to_ip, const struct packet * context)
+{
+	struct mp_header mhd;
+	melt_header(MP_CLIENT_SIDE, &mhd, &context->header);
+
+	if(mhd.rc < UPLOAD_FILE) return;
+
+	printf("[*] UDP stage on %s\n", to_ip);
+
+	struct session * se = get_session(mhd.uuid);
+
+	char * filename = malloc(context->size + 1);
+
+	memset(filename, 0x0, context->size + 1);
+	memmove(filename, context->data, context->size);
+
+	switch(mhd.rc)
+	{
+	case UPLOAD_FILE:
+		
+		/*
+		 * Starting UDP listening
+		 * to receive uploaded data
+		 */
+
+		download(filename, MP_UDP_PORT);
+		struct thread * th = at(mp_threads, mhd.nthread - 1);
+
+		struct string * filename_str = make_string();
+		string_push_back(filename_str, filename, strlen(filename));
+		
+		push_back(th->files, filename_str);	
+		printf("[+] %s successfully added to thread %d\n", filename, mhd.nthread);
+
+		free(filename_str);
+
+		break;
+
+	case DOWNLOAD_FILE:
+
+		/*
+		 * Starting UDP socket
+		 * to send data
+		 */
+
+		upload(family, to_ip, mhd.n, se, filename);
+
+		break;
+	}
 }

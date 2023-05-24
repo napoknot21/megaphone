@@ -76,9 +76,11 @@ struct packet * mp_subscribe(const struct session * se, uint16_t thread)
 
 struct packet * mp_upload_file(const struct session * se, uint16_t thread, char * filename)
 {
-	struct packet * p = make_packet();
-	p->data = filename;
+	struct packet * p = make_packet();	
 	p->size = strlen(filename);
+	p->data = malloc(p->size);
+
+	memmove(p->data, filename, p->size);
 
 	struct mp_header mhd = {UPLOAD_FILE, se->uid, thread, 0, p->size};
 	forge_header(MP_CLIENT_SIDE, &p->header, mhd);	
@@ -89,10 +91,13 @@ struct packet * mp_upload_file(const struct session * se, uint16_t thread, char 
 struct packet * mp_download_file(const struct session * se, uint16_t thread, char * filename)
 {
 	struct packet * p = make_packet();
-	struct mp_header mhd = {DOWNLOAD_FILE, se->uid, thread, MP_UDP_PORT, strlen(filename)};
+	p->size = strlen(filename);
+	p->data = malloc(p->size);
 
-	forge_header(MP_CLIENT_SIDE, &p->header, mhd);
-	p->data = filename;
+	memmove(p->data, filename, p->size);
+
+	struct mp_header mhd = {DOWNLOAD_FILE, se->uid, thread, MP_UDP_PORT, p->size};
+	forge_header(MP_CLIENT_SIDE, &p->header, mhd);	
 
 	return p;
 }
@@ -165,7 +170,7 @@ struct packet * mp_request_for(const struct session * se, const request_code_t r
 			break;
 		}
 
-		memmove(&thread, argv[0], 2);
+		sscanf(argv[0], "%hd", &thread);	
 		p = mp_download_file(se, thread, argv[1]);
 
 		break;
@@ -212,6 +217,15 @@ int mp_recv(const struct host * cl, struct session * se, const struct packet * c
 	struct mp_header mhd;
 	melt_header(MP_SERVER_SIDE, &mhd, &p->header);
 
+	char * data = NULL;
+	
+	if(context->data)
+	{
+		data = malloc(context->size + 1);
+		memset(data, 0x0, context->size + 1);
+		memmove(data, context->data, context->size);
+	}
+
 	switch(mhd.rc)
 	{
 	case SIGNUP:
@@ -232,24 +246,20 @@ int mp_recv(const struct host * cl, struct session * se, const struct packet * c
 		printf("[i] You successfully subscribed to thread %d!\n", mhd.nthread);
 		break;
 
-	case UPLOAD_FILE: ;
-		char * filename = malloc(context->size + 1);
+	case UPLOAD_FILE:	
+		upload(AF_INET, DEFAULT_BOOTSTRAP, mhd.n, se, data);
 
-		memset(filename, 0x0, context->size + 1);
-		memmove(filename, context->data, context->size);
-		
-		upload(AF_INET, DEFAULT_BOOTSTRAP, mhd.n, se, filename);
-
-		free(filename);
 		break;
 
 	case DOWNLOAD_FILE:
-	//	download();
+		download(data, MP_UDP_PORT);
 		break;
 
 	default:
 		printf("[-] Error %d has occured!\n", mhd.rc);
 	}
+
+	free(data);
 
 	return 0;
 }

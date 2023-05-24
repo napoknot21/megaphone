@@ -45,6 +45,23 @@ struct packet * make_packet()
 	return p;
 }
 
+struct packet * copy_packet(const struct packet * model)
+{
+	struct packet * copy = make_packet();
+
+	copy->header.size = model->header.size;
+	copy->header.fields = malloc(copy->header.size * FIELD_SIZE);
+
+	memmove(copy->header.fields, model->header.fields, copy->header.size * FIELD_SIZE);
+
+	copy->size = model->size;
+	copy->data = malloc(copy->size);
+
+	memmove(copy->data, model->data, copy->size);
+
+	return copy;
+}
+
 void free_packet(struct packet * p)
 {
 	free(p->header.fields);

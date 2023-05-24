@@ -19,7 +19,6 @@ pthread_t threads[MAX_CLIENTS];
 int handlers = 0;
 int if_index = 0;
 
-
 int create_socket (int *sock, int domain, int protocol, const char * distant, uint16_t port) 
 {
     *sock = socket (domain, protocol, 0);
@@ -177,10 +176,15 @@ void remove_client (int *sock)
 }
 
 
-void * handler_client (void * p_sock) 
+void * handler_client (void * distant) 
 {
     int sock;
-    memmove(&sock, (int *) p_sock, sizeof(int));
+    memmove(&sock, distant, sizeof(int));
+    
+    struct sockaddr_in addr;
+    memmove(&addr, distant + sizeof(int), sizeof(struct sockaddr_in));
+
+    free(distant);
 
     struct packet rp;
     memset(&rp, 0x0, sizeof(rp));
@@ -189,7 +193,7 @@ void * handler_client (void * p_sock)
 
     rp.header.fields = malloc(header_size);
     rp.header.size = MP_HEADER_FIELD_SIZE;
-
+ 
     recv(sock, rp.header.fields, header_size, 0); 
 
     rp.size = ntohs(rp.header.fields[MP_FIELD_DATALEN]);
@@ -217,12 +221,22 @@ void * handler_client (void * p_sock)
 
 	    if(sp[i].data)
 	    {
-		    printf("data: %s\n", sp[i].data);
+		    printf("[*] data: %s\n", sp[i].data);
 		    free(sp[i].data);
 	    }
     } 
 
-    free(sp);
+    if(sp)
+    {	
+	   /*
+    	char ip[INET6_ADDRSTRLEN];
+	memset(ip, 0x0, INET6_ADDRSTRLEN);
+
+	inet_ntop(addr.sa_family, &addr, ip, INET6_ADDRSTRLEN);
+	*/
+	udp_stage(addr.sin_family, inet_ntoa(addr.sin_addr), &rp);
+	free(sp);
+    }
 
     remove_client(&sock);
     pthread_exit(NULL);
@@ -311,13 +325,19 @@ void run ()
         
         } else {
 
-            threads[handlers++] = *cli_socket;
-            
-            if ((pthread_create(&thread_id, NULL, handler_client, cli_socket)) != 0) {
+            threads[handlers] = *cli_socket;   
+
+	    char * distant = malloc(sizeof(int) + sizeof(struct sockaddr_in));
+	    
+	    memmove(distant, cli_socket, sizeof(int));
+	    memmove(distant + sizeof(int), &cli_addr, sizeof(struct sockaddr_in));
+
+            if ((pthread_create(&thread_id, NULL, handler_client, distant)) != 0) {
                 perror("[!] pthread_create failed...\n");
                 exit(EXIT_FAILURE);
             }
 
+	    handlers++;
             pthread_detach(thread_id);
         }
 

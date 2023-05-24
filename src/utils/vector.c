@@ -1,4 +1,5 @@
 #include "vector.h"
+#include <stdio.h>
 
 struct vector * make_vector(void* (*copy)(const void*), void (*free)(void*), size_t elem_size)
 {
@@ -25,8 +26,6 @@ struct vector * copy_vector(const struct vector * model)
 		void * elem = at(model, i);
 		push_back(copy, elem);
 	}
-
-//	memmove(copy->data, copy->data, copy->size * copy->elem_size);
 
 	return copy;
 }
@@ -58,9 +57,11 @@ void clear(struct vector * v)
 
 void push_back(struct vector * v, const void * src)
 {
+	if(!v) return;
+
 	while(v->size + 1 >= v->capacity)
 	{
-		v->capacity *= 2;
+		v->capacity *= 2;	
 		v->data = realloc(v->data, v->capacity);
 	}
 

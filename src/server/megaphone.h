@@ -9,4 +9,6 @@
 struct session * get_session(const uid_t);
 struct packet * mp_process_data(struct packet*, size_t*);
 
+void udp_stage(int, const char*, const struct packet*);
+
 #endif
