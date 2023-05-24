@@ -7,45 +7,45 @@
 struct string * make_string()
 {
 	struct string * str = malloc(sizeof(struct string));
-
 	memset(str, 0x0, sizeof(struct string));
 
-	str->data = malloc(DEFAULT_STRING_CAPACITY);
-	str->capacity = DEFAULT_STRING_CAPACITY;
-	str->size = 0;
-
+	str->vec = make_vector(
+			NULL,
+			NULL,
+			sizeof(char)
+			);
+	
 	return str;
+}
+
+struct string * copy_string(const struct string * model)
+{
+	struct string * copy = make_string();
+	copy->vec = copy_vector(model->vec);
+
+	return copy;
 }
 
 void free_string(struct string * str)
 {
-	free(str->data);
+	free_vector(str->vec);
 	free(str);
 }
 
 void string_push_back(struct string * str, const char * data, size_t len)
 {
-	while(str->size + len > str->capacity)
-	{
-		str->capacity *= DEFAULT_STRING_REALLOCATION_FACTOR;
-		str->data = realloc(str->data, str->capacity);
-	}
-
-	memmove(str->data + str->size, data, len);
-	str->size += len;
+	for(size_t i = 0; i < len; i++) push_back(str->vec, &data[i]);
 }
 
 char string_pop_back(struct string * str)
 {
-	char copy = 0;
+	char * lst = at(str->vec, str->vec->size - 1);	
+	pop_back(str->vec);
 	
-	if(str->size)
-	{
-		size_t pos = str->size - 1;
+	return *lst;
+}
 
-		memmove(&copy, str->data + pos, 1);
-		memset(str->data + pos, 0x0, 1);
-	}
-
-	return copy;
+char * string_at(const struct string * str, size_t i)
+{
+	return at(str->vec, i);
 }
