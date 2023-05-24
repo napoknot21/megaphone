@@ -237,18 +237,18 @@ struct packet * mp_request_threads(const struct session * se, uint16_t thread, u
 struct packet * mp_subscribe(const struct session * se, uint16_t thread)
 {
 	struct packet * p = make_packet();
+	printf("[i] subscribe request on thread %d.\n", thread);
 	
 	if(thread && thread <= mp_threads->size)
 	{
-		struct thread * th = at(mp_threads, thread);
+		struct thread * th = at(mp_threads, thread - 1);
+		struct mp_header mhd = {SUBSCRIBE, se->uid, thread, 0, 0};
 
-		p->header.fields = malloc(11 * FIELD_SIZE);
-		uint16_t cu = fusion(SUBSCRIBE, se->uid);
+		forge_header(MP_SERVER_SIDE, &p->header, mhd);
+		p->size = 16;
 
-		p->header.fields[MP_FIELD_CR_UUID] = htons(cu);
-		p->header.fields[MP_FIELD_THREAD] = htons(thread);
-		p->header.fields[MP_FIELD_NUMBER] = htons(MP_MULTICAST_PORT);
-		memmove(p->header.fields + 6, &th->addr, 16);
+		p->data = malloc(p->size);
+		memmove(p->data, &th->addr, 16);
 	}
 
 	return p;
@@ -310,7 +310,7 @@ struct packet * mp_process_data(struct packet * recv_p, size_t * sp)
 
     case SUBSCRIBE:
 	printf("[i] Subscribe request!\n"); 
-        send_p = mp_subscribe(se, recv_p->header.fields[0]);
+        send_p = mp_subscribe(se, mhd.nthread);
         break;
 
     case UPLOAD_FILE:

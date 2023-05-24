@@ -141,7 +141,7 @@ struct packet * mp_request_for(const struct session * se, const request_code_t r
 		break;
 
 	case SUBSCRIBE:	
-		memmove(&thread, argv[0], 2);
+		sscanf(argv[0], "%hd", &thread);	
 		p = mp_subscribe(se, thread);
 		break;
 	
@@ -228,7 +228,7 @@ int mp_recv(const struct host * cl, struct session * se, const struct packet * c
 		break;
 
 	case SUBSCRIBE:
-		printf("[i] You successfully subscribed to %d thread!\n", mhd.nthread);
+		printf("[i] You successfully subscribed to thread %d!\n", mhd.nthread);
 		break;
 
 	case UPLOAD_FILE:
