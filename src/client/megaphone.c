@@ -11,12 +11,12 @@
  * SIGNUP.
  */
 
-struct packet * mp_signup(char * username) 
+struct packet * mp_signup(char * username, size_t len) 
 {
 	struct packet * p = make_packet();
 
 	p->data = username;
-	p->size = strlen(username);
+	p->size = len;
 
 	struct mp_header mhd = {SIGNUP, 0, 0, 0, p->size};
 	forge_header(MP_CLIENT_SIDE, &p->header, mhd);
@@ -77,10 +77,11 @@ struct packet * mp_subscribe(const struct session * se, uint16_t thread)
 struct packet * mp_upload_file(const struct session * se, uint16_t thread, char * filename)
 {
 	struct packet * p = make_packet();
-	struct mp_header mhd = {UPLOAD_FILE, se->uid, thread, 0, strlen(filename)};
-
-	forge_header(MP_CLIENT_SIDE, &p->header, mhd);
 	p->data = filename;
+	p->size = strlen(filename);
+
+	struct mp_header mhd = {UPLOAD_FILE, se->uid, thread, 0, p->size};
+	forge_header(MP_CLIENT_SIDE, &p->header, mhd);	
 
 	return p;
 }
@@ -111,7 +112,7 @@ struct packet * mp_request_for(const struct session * se, const request_code_t r
 	{
 	case SIGNUP:
 		printf("[!] Signing-up with username %s\n", argv[0]);
-		p = mp_signup(argv[0]);	
+		p = mp_signup(argv[0], strlen(argv[0]));	
 		break;
 	
 	case POST:
@@ -152,7 +153,7 @@ struct packet * mp_request_for(const struct session * se, const request_code_t r
 			break;
 		}
 
-		memmove(&thread, argv[0], 2);
+		sscanf(argv[0], "%hd", &thread);	
 		p = mp_upload_file(se, thread, argv[1]);
 
 		break;
@@ -232,7 +233,14 @@ int mp_recv(const struct host * cl, struct session * se, const struct packet * c
 		break;
 
 	case UPLOAD_FILE:
-		upload(AF_INET, DEFAULT_BOOTSTRAP, mhd.n, se, context->data);
+		char * filename = malloc(context->size + 1);
+
+		memset(filename, 0x0, context->size + 1);
+		memmove(filename, context->data, context->size);
+		
+		upload(AF_INET, DEFAULT_BOOTSTRAP, mhd.n, se, filename);
+
+		free(filename);
 		break;
 
 	case DOWNLOAD_FILE:

@@ -207,23 +207,6 @@ void * handler_client (void * p_sock)
 
     for(size_t i = 0; i < len; i++)
     {
-/*
-	hd_s = sp[i].header.size * FIELD_SIZE;
-	dt_s = sp[i].size;
-
-	printf("Sending packet : %ld %ld %d\n", hd_s, dt_s, sp[i].header.fields[11]);
-
-    	char * block = malloc(hd_s + dt_s);
-
-	memmove(block, (sp + i)->header.fields, hd_s);
-	memmove(block + hd_s, (sp + i)->data, dt_s);
-
-	send(sock, block, hd_s + dt_s, 0);
-	
-	free(block);
-	free((sp + i)->header.fields);
-	free((sp + i)->data);	
-  */
 	    size_t block_size = 0;
 	    char * block = forge_tcp_packet(&sp[i], &block_size);
 

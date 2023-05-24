@@ -156,6 +156,8 @@ int communication_udp(struct host * cl)
 
 int client_send_dataflow(const struct host * cl, const struct packet * p, struct packet * rp)
 {
+	if(!p) return -1;
+
 	size_t len = 0;
 	char * data = forge_tcp_packet(p, &len);	
 
@@ -288,7 +290,7 @@ void mp_shell()
 			mp_recv(cl, &se, p, recv_p);
 		}
 
-		free(p);
+		if(p) free(p);
 		free_packet(recv_p);
 
 		for(size_t k = 0; k < argc; k++)

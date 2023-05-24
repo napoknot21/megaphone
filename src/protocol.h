@@ -75,6 +75,7 @@ struct thread
 	struct in6_addr addr;
 
 	struct vector * posts;
+	struct vector * files;
 };
 
 struct thread * copy_thread(const struct thread*);
@@ -142,12 +143,12 @@ uid_t get_uuid(uint16_t);
 
 uint16_t fusion(uint16_t, uint16_t);
 
-struct packet * mp_signup(char*);
+struct packet * mp_signup(char*, size_t);
 struct packet * mp_upload_post(const struct session*, struct post*, uint16_t);
 struct packet * mp_request_threads(const struct session*, uint16_t, uint16_t*);
 struct packet * mp_subscribe(const struct session*, uint16_t);
 
 void upload(int, const char*, uint16_t, struct session*, const char*);
-void download(int, const char*, uint16_t, const char*);
+char * download(int, const char*, uint16_t);
 
 #endif

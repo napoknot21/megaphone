@@ -1,5 +1,7 @@
 #include "protocol.h"
+#include "core.h"
 #include "utils/vector.h"
+#include "utils/string.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -183,6 +185,7 @@ struct thread * copy_thread(const struct thread * th)
 	copy->addr = th->addr;
 
 	copy->posts = copy_vector(th->posts);
+	copy->files = copy_vector(th->files);
 
 	return copy;
 }
@@ -190,6 +193,7 @@ struct thread * copy_thread(const struct thread * th)
 void free_thread(struct thread * th)
 {
 	free_vector(th->posts);
+	free_vector(th->files);
 	free(th);
 }
 
@@ -261,9 +265,8 @@ void melt_udp_header(struct mp_udp_header * muh, const struct header * hd)
  */
 
 struct packet * chunk_data(struct mp_udp_header muh, const char * data, size_t * len)
-{
-	size_t ds = strlen(data);
-	*len = ds / UDP_BLOCK_SIZE + 1;
+{	
+	*len = *len / UDP_BLOCK_SIZE + 1;
 
 	struct packet * packets = malloc(*len * sizeof(struct packet));
 	memset(packets, 0x0, *len * sizeof(struct packet));
@@ -271,13 +274,14 @@ struct packet * chunk_data(struct mp_udp_header muh, const char * data, size_t *
 	size_t offset = 0;	
 	size_t data_size = UDP_BLOCK_SIZE - 4;
 
-	for(size_t i = 0; i < *len; i++)
+	for(uint16_t * i = &muh.n; *i < *len; (*i)++)
 	{	
-		forge_udp_header(&packets[i].header, muh);
-	
-		packets[i].header.fields[1] = i;
-		memmove(packets[i].data, data + offset, data_size);
+		forge_udp_header(&packets[*i].header, muh);
+		
+		packets[*i].size = data_size;
+		packets[*i].data = malloc(data_size);
 
+		memmove(packets[*i].data, data + offset, data_size);
 		offset += data_size;
 	}
 
@@ -315,6 +319,8 @@ void upload(int family, const char * ip, uint16_t port, struct session * se, con
 	 * Reads data first
 	 */
 
+	printf("[*] preparing upload of %s to %s:%d\n", filename, ip, port);	
+
 	int fd = open(filename, O_RDONLY);
 
 	if(fd == -1)
@@ -334,9 +340,9 @@ void upload(int family, const char * ip, uint16_t port, struct session * se, con
 
 	/*
 	 * Then formats data
-	 */
+	 */	
 
-	size_t pt_len = 0;
+	size_t pt_len = len;
 	struct mp_udp_header muh = {UPLOAD_FILE, se->uid, 0};
 	struct packet * packets = chunk_data(muh, data, &pt_len);
 
@@ -347,7 +353,8 @@ void upload(int family, const char * ip, uint16_t port, struct session * se, con
 
 	int sock = socket(PF_INET, SOCK_DGRAM, 0);
 
-	struct sockaddr addr;
+	struct sockaddr addr = format_addr(family, ip, port);
+	/*
 	memset(&addr, 0x0, sizeof(addr));
 
 	addr.sa_family = family;
@@ -355,8 +362,9 @@ void upload(int family, const char * ip, uint16_t port, struct session * se, con
 
 	memmove(addr.sa_data, &port, 2);
 	inet_pton(family, ip, addr.sa_data + 6);
-
+	*/
 	char block[MP_UDP_BLOCK_SIZE];
+	printf("[*] sending %ld byte(s) with %ld UDP packet(s)\n", len, pt_len);
 
 	for(size_t k = 0; k < pt_len; k++)
 	{	
@@ -364,6 +372,8 @@ void upload(int family, const char * ip, uint16_t port, struct session * se, con
 		memmove(block + 4, packets[k].data, 508);
 		sendto(sock, block, MP_UDP_BLOCK_SIZE, 0, &addr, sizeof(struct sockaddr));
 	}
+
+	close(sock);
 }
 
 /*
@@ -371,3 +381,82 @@ void upload(int family, const char * ip, uint16_t port, struct session * se, con
  * to download and write
  * data.
  */
+
+char * download(int family, const char * ip, uint16_t port)
+{
+	int sock = socket(PF_INET, SOCK_DGRAM, 0);
+
+	struct sockaddr_in locaddr;
+	memset(&locaddr, 0x0, sizeof(locaddr));
+
+	locaddr.sin_family = AF_INET;	
+	locaddr.sin_port = htons(port);
+
+	int status = bind(sock, (struct sockaddr *) &locaddr, sizeof(locaddr));
+
+	if(status == -1)
+	{
+		printf("[-] failed to instantiate download\n");
+		return NULL;
+	}
+
+	struct sockaddr from_addr = format_addr(family, ip, port);
+	socklen_t sa_size = sizeof(struct sockaddr);
+
+	printf("[*] downloading from %s:%d\n", ip, port);
+
+	struct vector * data = make_vector(
+			(void* (*)(const void*)) copy_string,
+			(void (*)(void*)) free_string,
+			sizeof(struct string)
+			);
+
+	struct vector * indices = make_vector(
+			NULL,
+			NULL,
+			sizeof(size_t)
+			);
+
+	char block[MP_UDP_BLOCK_SIZE];
+	size_t bytes;
+
+	struct header hd;
+	memset(&hd, 0x0, sizeof(hd));
+
+	hd.size = 2;
+	hd.fields = malloc(hd.size * FIELD_SIZE);
+
+	struct mp_udp_header muh;	
+
+	do {
+
+		bytes = recvfrom(sock, block, MP_UDP_BLOCK_SIZE, 0, &from_addr, &sa_size);
+		memmove(hd.fields, block, hd.size * FIELD_SIZE);
+		melt_udp_header(&muh, &hd);
+
+		push_back(indices, &muh.n);
+		
+		struct string * str = make_string();
+
+		string_push_back(str, block, bytes);
+		push_back(data, str);
+
+		free_string(str);
+
+	} while(bytes == MP_UDP_BLOCK_SIZE);
+
+	size_t filesize = (indices->size - 1) * 508 + (bytes - 4);
+	char * wo_data = malloc(filesize);
+
+	for(size_t k = 0; k < indices->size; k++)
+	{
+		size_t * index = at(indices, k);
+		struct string * block_str = at(data, k);
+
+		memmove(wo_data + *index * 508, block_str->vec->data, 508);
+	}
+
+	printf("[*] %ld byte(s) downloaded\n", filesize);
+
+	return wo_data;
+}
