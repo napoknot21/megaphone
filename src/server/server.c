@@ -203,14 +203,15 @@ void * handler_client (void * p_sock)
     size_t len = 1;
     struct packet * sp = mp_process_data(&rp, &len);
 
-    size_t hd_s, dt_s;
+    printf("%ld packets to send\n", len);
 
     for(size_t i = 0; i < len; i++)
     {
+/*
 	hd_s = sp[i].header.size * FIELD_SIZE;
 	dt_s = sp[i].size;
 
-	printf("Sending packet : %ld %ld %d\n", hd_s, dt_s, (sp + i)->header.fields[11]);
+	printf("Sending packet : %ld %ld %d\n", hd_s, dt_s, sp[i].header.fields[11]);
 
     	char * block = malloc(hd_s + dt_s);
 
@@ -222,6 +223,20 @@ void * handler_client (void * p_sock)
 	free(block);
 	free((sp + i)->header.fields);
 	free((sp + i)->data);	
+  */
+	    size_t block_size = 0;
+	    char * block = forge_tcp_packet(&sp[i], &block_size);
+
+	    send(sock, block, block_size, 0);
+
+	    free(block);
+	    free(sp[i].header.fields);
+
+	    if(sp[i].data)
+	    {
+		    printf("data: %s\n", sp[i].data);
+		    free(sp[i].data);
+	    }
     } 
 
     free(sp);

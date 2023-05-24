@@ -29,7 +29,7 @@ void forge_header(int side, struct header * hd, const struct mp_header mhd)
 	size_t fs = !side ? MP_HEADER_FIELD_SIZE : 3;
 
 	hd->fields = malloc(fs * FIELD_SIZE);
-	hd->size = MP_HEADER_FIELD_SIZE;
+	hd->size = fs;
 
 	uint16_t cu = fusion(mhd.rc, mhd.uuid);	
 

@@ -173,7 +173,7 @@ struct packet * mp_request_threads(const struct session * se, uint16_t thread, u
 		struct thread * th = at(mp_threads, thread - 1);
 		size_t ps = th->posts->size;
 			
-		size = *n <= ps ? *n : ps;
+		size = *n && *n <= ps ? *n : ps;
 	}
 	else
 	{
@@ -202,7 +202,7 @@ struct packet * mp_request_threads(const struct session * se, uint16_t thread, u
 		struct thread * th = at(mp_threads, i);
 		
 		size_t ps = th->posts->size;
-		size_t beg = *n <= ps ? ps - *n : 0;	
+		size_t beg = *n && *n <= ps ? ps - *n : 0;	
 
 		for(size_t k = beg; k < ps; k++)
 		{
@@ -218,11 +218,14 @@ struct packet * mp_request_threads(const struct session * se, uint16_t thread, u
 
 			printf("Post of length %d %s\n", mph.len, post->data);
 
-			(p + packet_pos)->data = malloc(post->len);
-			memmove((p + packet_pos)->data, post->data, post->len);
+		 	p[packet_pos].data = malloc(post->len);
+			memmove(p[packet_pos].data, post->data, post->len);
 
-			(p + packet_pos)->size = post->len;
-			forge_post_header(&(p + packet_pos++)->header, mph);	
+			p[packet_pos].size = post->len;
+			forge_post_header(&p[packet_pos].header, mph);
+
+			printf("Header len field: %d\n", ntohs(p[packet_pos].header.fields[11]));
+			packet_pos++;
 		}
 	}
 
