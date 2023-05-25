@@ -272,34 +272,36 @@ void mp_shell()
 		request_code_t rc = string_to_code(argv[0]);
 		printf("[!] Request Code: %d\n", rc);
 
-		struct packet * p = mp_request_for(&se, rc, argc - 1, argv + 1);
-		struct packet * recv_p = make_packet();
+		struct packet * p = mp_request_for(&se, rc, argc - 1, argv + 1);	
 
-		/*
-		 * There we add TCP/IP socket
-		 */
+		if(p)
+		{
+			/*
+			 * There we add TCP/IP socket
+			 */
 	
-		if(set_socket(&cl->tcp_sock, AF_INET, SOCK_STREAM, DEFAULT_BOOTSTRAP, MP_TCP_PORT))
-		{
-			printf("[-] Error while initializing client!\n");
-			return;
-		}
+			if(set_socket(&cl->tcp_sock, AF_INET, SOCK_STREAM, DEFAULT_BOOTSTRAP, MP_TCP_PORT))
+			{
+				printf("[-] Error while initializing client!\n");
+				return;
+			}
 
-		if(client_send_dataflow(cl, p, recv_p) != -1)
-		{
-			mp_recv(cl, &se, p, recv_p);
-		}
+			struct packet * recv_p = make_packet();
+			if(client_send_dataflow(cl, p, recv_p) != -1)
+			{
+				mp_recv(cl, &se, p, recv_p);
+			}
 
-		if(p) free(p);
-		free_packet(recv_p);
+			free(p);
+			free_packet(recv_p);
+		
+			close(cl->tcp_sock);	
+		}
 
 		for(size_t k = 0; k < argc; k++)
-		{
 			free(argv[k]);
-		}
 
-		free(argv);	
-		close(cl->tcp_sock);
+		free(argv);		
 
 	} while(strcmp(data, "quit\n"));
 

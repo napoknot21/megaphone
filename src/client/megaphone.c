@@ -123,7 +123,7 @@ struct packet * mp_request_for(const struct session * se, const request_code_t r
 	case POST:
 		if(argc <= 1)
 		{
-			printf("[!] Usage : post <thread> <message>");
+			printf("[!] Usage : post <thread> <message>\n");
 			break;
 		}
 
@@ -136,7 +136,7 @@ struct packet * mp_request_for(const struct session * se, const request_code_t r
 	case FETCH:
 		if(argc <= 1)
 		{
-			printf("[!] Usage : fetch <thread> <size>");
+			printf("[!] Usage : fetch <thread> <size>\n");
 			return NULL;
 		}
 
@@ -177,6 +177,7 @@ struct packet * mp_request_for(const struct session * se, const request_code_t r
 
 	default:
 		printf("[-] This request code is unknown!\n");
+		help();
 	}	
 
 	return p;
